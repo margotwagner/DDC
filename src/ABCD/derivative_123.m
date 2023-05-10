@@ -40,11 +40,4 @@ for n1=1:dm,
     end;
   end;
 end;
-D3=D3./d;  clear d;
-
-
-
-
-
-
-
+D3=D3./d;  clear d; 
