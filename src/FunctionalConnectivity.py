@@ -23,7 +23,9 @@ class FunctionalConnectivity:
     def __init__(
         self,
         labels,
-        n_roi,  # can probably set n_roi from labels, right? like len(labels)?
+        n_roi,  # can probably set n_roi from labels, right? like len(labels)? 
+                # NO, it is the number or regions of interest (68), while len(labels) is the number of subjects 
+        thrs, # binarizatin threshold
         weights_file_name,
     ):
         # if you want the variable to be automatically specified, only put it down here
@@ -31,14 +33,16 @@ class FunctionalConnectivity:
         # for the variables you allow users to specify, you still have to tell
         # the class what they are, so it looks like this
         self.labels = labels
-        self.n_roi = n_roi
+        self.n_roi = n_roi 
+        self.thrs = thrs
         self.weights_file_name = weights_file_name
 
         # these are automatically specified
-        self.n1 = (
-            1518  # NOT SURE WHERE THIS CAME FROM (n_control - TODO: get automatically)
-        )
-        self.n2 = 267  # NOT SURE WHERE THIS CAME FROM (n_depressed)
+        self.n1 = 1518 # prov
+              # len(self.labels[self.labels.values == 0]) # auto (n_control)
+      
+        self.n2 = 267 # prov
+                # len(self.labels[self.labels.values == 1]) # auto (n_depressed)
         self.DDC_path = (
             "/nadata/cnl/abcd/data/imaging/fmri/rsfmri/interim/DDC/baseline/raw/"
         )
@@ -133,10 +137,10 @@ class FunctionalConnectivity:
                                 pd.read_csv(f, header=None)
                             )
 
-                            # TODO: explain this
+                            # Threshold binarization (to be replaced by bootstrap) and reshape
                             control_weights_vec[j, :] = np.reshape(
-                                (abs(control_weights[j, :, :]) > 0.1) * 1,
-                                (1, self.n_roi * self.n_roi),
+                                (abs(control_weights[j, :, :]) > self.thrs) * 1,
+                                (1, self.n_roi * self.n_roi)
                             )
 
                             ctrl_files.append(f)
@@ -148,10 +152,10 @@ class FunctionalConnectivity:
                             depress_weights[k, :, :] = np.asarray(
                                 pd.read_csv(f, header=None)
                             )
-
+                            # Threshold binarization (to be replaced by bootstrap) and reshape
                             depress_weights_vec[k, :] = np.reshape(
-                                (abs(depress_weights[k, :, :]) > 0.1) * 1,
-                                (1, self.n_roi * self.n_roi),
+                                (abs(depress_weights[k, :, :]) > self.thrs) * 1,
+                                (1, self.n_roi * self.n_roi)
                             )
 
                             k += 1
@@ -184,7 +188,7 @@ class FunctionalConnectivity:
             depress,
         )
 
-    def get_significant_connections_control(self):
+    def get_binary_connections_percentage_control(self): 
         sig_conn = np.reshape(
             sum(self.control_weights_vec) / np.shape(self.control_weights_vec)[0],
             (self.n_roi, self.n_roi),
@@ -192,7 +196,7 @@ class FunctionalConnectivity:
 
         return sig_conn
 
-    def get_significant_connections_depress(self):
+    def get_binary_connections_percentage_depress(self):
         sig_conn = np.reshape(
             sum(self.depress_weights_vec) / np.shape(self.depress_weights_vec)[0],
             (self.n_roi, self.n_roi),
@@ -248,7 +252,7 @@ class FunctionalConnectivity:
 
         return network_DDC
 
-    def plot_weights(self, state, plot=plt.figure(), colorbar=True):
+    def plot_binary_weights(self, state, plot=plt.figure(), colorbar=True): # plot the binary connectivity for all subjects in vector form per state
         if state == "control":
             weights = self.control_weights_vec.T
         else:
@@ -260,31 +264,16 @@ class FunctionalConnectivity:
         plt.xlabel("Subjects")
         plt.title("{}".format(state))
 
-    def plot_weights_across_states(self):
+    def plot_binary_weights_across_states(self): # plot the binary connectivity for all subjects in vector form for control and depressed
         plt.figure(figsize=(10, 10))
         plt.subplot(121)
-        self.plot_weights("control", plt)
+        self.plot_binary_weights("control", plt)
 
         plt.subplot(122)
-        self.plot_weights("depressed", plt, colorbar=False)
+        self.plot_binary_weights("depressed", plt, colorbar=False)
 
-    def plot_2(self):
-        sig_connect_control = self.get_significant_connections_control()
-        sig_connect_depress = self.get_significant_connections_depress()
-        plt.figure()
-        plt.title("Significant connection % across Control individuals")
-        plt.imshow(sig_connect_control, cmap="Greens")
-        plt.colorbar()
-        plt.figure()
-        plt.title("Significant connection % across Depressed individuals")
-        plt.imshow(sig_connect_depress, cmap="Reds")
-        plt.colorbar()
-        plt.figure()
-        plt.title("Significant connection abs difference")
-        plt.imshow(abs(sig_connect_control - sig_connect_depress), cmap="Greys")
-        plt.colorbar()
 
-    def plot_3(self):
+    def plot_significant_connections_bar(self):
         plt.figure(figsize=(10, 5))
         plt.bar(
             np.arange(0, self.n_roi * self.n_roi, 1),
@@ -303,82 +292,81 @@ class FunctionalConnectivity:
         plt.ylim([0, 1])
         plt.title("Significant connections (abs(DDC)>0.1)")
 
-    def plot_4(self):
-        sig_connect_control = self.get_significant_connections_control()
-        sig_connect_depress = self.get_significant_connections_depress()
-        ddc_plot = sig_connect_control > 0.8
+    def plot_significant_connections_graph(self): # plot network graph of signifiicant connections for controls and depressed
+        sig_connect_control = self.get_binary_connections_percentage_control()
+        sig_connect_depress = self.get_binary_connections_percentage_control()
+        ddc_plot = sig_connect_control > 0.5
         G = nx.from_numpy_array(ddc_plot)
         plt.figure(figsize=(10, 10))
         plt.subplot(121)
         nx.draw(G, np.asarray(self.positions[["x", "y"]]), with_labels=True)
         plt.title("Control")
         plt.subplot(122)
-        ddc_plot = sig_connect_depress > 0.8
+        ddc_plot = sig_connect_depress > 0.5
         G = nx.from_numpy_array(ddc_plot)
         plt.title("Depressed")
         nx.draw(G, np.asarray(self.positions[["x", "y"]]), with_labels=True)
 
-    def plot_5(self):
-        fig = plt.figure(figsize=(10, 10))
-        n = 0
-        for i in range(25):
-            ax = fig.add_subplot(5, 5, n + 1)
-            plt.imshow(self.control_weights[i, :, :])
-            plt.clim([-0.5, 0.5])
+#    def plot_5(self): # plot 25 single connectivity matrices
+#        fig = plt.figure(figsize=(10, 10))
+#        n = 0
+#        for i in range(25):
+#            ax = fig.add_subplot(5, 5, n + 1)
+#            plt.imshow(self.control_weights[i, :, :])
+#            plt.clim([-0.5, 0.5])
+#
+#           plt.axis("off")
+#            n += 1
 
-            plt.axis("off")
-            n += 1
-
-    def plot_mean_weights(self, state, plot=plt.figure(), colorbar=True):
+    def plot_mean_weights(self, state, plot=plt.figure(), colorbar=True): # plot mean connectivity matrix per state
         avg = self.get_mean_ddc(state)
         plt.imshow(avg)
         if colorbar:
             plt.colorbar()
-        plt.clim([-0.05, 0.05])
+        #plt.clim([-0.01, 0.01])
         plt.title("average {} weights".format(state))
         plt.xlabel("ROI #")
         plt.ylabel("ROI #"),
 
-    def plot_mean_difference(self, plot=plt.figure()):
+    def plot_mean_difference(self, plot=plt.figure()): # plot difference between mean connectivity matrix per state
         avg_ctrl = self.get_mean_ddc("control")
         avg_depr = self.get_mean_ddc("depressed")
         plt.imshow(avg_ctrl - avg_depr)
-        plt.clim([-0.05, 0.05])
+        #plt.clim([-0.01, 0.01])
         plt.title("Difference")
         plt.xlabel("ROI #")
         plt.ylabel("ROI #")
 
-    def plot_means(self, colorbar=False):
+    def plot_means_connectivity_matrices(self, colorbar=False): # plot mean connectivity matrix for controls and depressed
         plt.figure(figsize=(10, 5))
 
         plt.subplot(131)
         self.plot_mean_weights("control", plt, colorbar)
-
+        
         plt.subplot(132)
         self.plot_mean_weights("depressed", plt, colorbar)
-
+        
         plt.subplot(133)
-        # Rho_diff
         self.plot_mean_difference(plt)
-
+        
         plt.tight_layout()
 
         # plt.colorbar()
 
-    def plot_9(self):
+    def plot_means_std_matrices(self): 
         avg_ddc_ctrl = self.get_mean_ddc("control")
         avg_ddc_depr = self.get_mean_ddc("depressed")
         plt.figure(figsize=(10, 10))
         plt.subplot(221)
         im = plt.imshow(avg_ddc_ctrl)
-        plt.clim([-0.05, 0.05])
+        #plt.clim([-0.01, 0.01])
         plt.title("avg DDC control")
         plt.xlabel("ROI #")
         plt.ylabel("ROI #")
 
         plt.subplot(222)
         im = plt.imshow(avg_ddc_depr)
-        plt.clim([-0.05, 0.05])
+        #plt.clim([-0.01, 0.01])
         plt.title("avg DDC depr")
         plt.xlabel("ROI #")
         plt.ylabel("ROI #")
@@ -386,24 +374,24 @@ class FunctionalConnectivity:
         plt.subplot(223)
         std_ddc_ctrl = self.get_std_ddc("control")
         im = plt.imshow(std_ddc_ctrl)
-        plt.clim([0, 1])
+        #plt.clim([0, 1])
         plt.title("std DDC control")
         plt.xlabel("ROI #")
         plt.ylabel("ROI #")
         plt.subplot(224)
         std_ddc_depr = self.get_std_ddc("depressed")
         im = plt.imshow(std_ddc_depr)
-        plt.clim([0, 1])
+        #plt.clim([0, 1])
         plt.title("std DDC depr")
         plt.xlabel("ROI #")
         plt.ylabel("ROI #")
 
-    def subset_fc(self, fc, include):
+    def subset_fc(self, fc, include): # get subnetwork connectivity
         a = fc[include, :]
         a = a[:, include]
         return a
 
-    def plot_network_condition(
+    def plot_network_condition( # plot connectivity matrix for a specific subnetwork
         self, network_indices, network_labels, network_name, state, plot, subplot_number
     ):
         plt.subplot(subplot_number)
@@ -420,9 +408,9 @@ class FunctionalConnectivity:
         plt.imshow(a)
         plt.yticks(np.arange(len(network_indices)), network_labels)
         plt.xticks(np.arange(len(network_indices)), network_labels, rotation="vertical")
-        plt.clim([-0.05, 0.05])
+        #plt.clim([-0.01, 0.01])
 
-    def plot_network_heatmap(self, network_name):
+    def plot_network_heatmap(self, network_name): # plot binary matrix of significant connections for a specific subnetwork
         plt.figure(figsize=(15, 5))
 
         indices = self.get_network_indices(network_name)
@@ -454,7 +442,7 @@ class FunctionalConnectivity:
         # for r in DMN:
         #    print(Desikan_ROIs[r])
 
-    def plot_network(self, network_name):
+    def plot_network_siignificant_connections_graph(self, network_name): # plot network graph only significantly different connections for a specific subnetwork
         indices = self.get_network_indices(network_name)
         labels = self.get_network_labels(network_name)
 
@@ -478,7 +466,7 @@ class FunctionalConnectivity:
         )
         plt.title("{} significantly different connections".format(network_name))
 
-    def plot_network_connectivity(self, network_name, state):
+    def plot_network_connectivity_graph(self, network_name, state): # plot network graph on brain template of connections for a specific subnetwork and state 
         indices = self.get_network_indices(network_name)
 
         coord_list = np.asarray(self.positions[["x", "y", "z"]])
@@ -490,14 +478,14 @@ class FunctionalConnectivity:
             coord_list[indices, :],
             node_color="r",
             edge_cmap=None,
-            edge_vmax=0.07,
+            edge_vmax=0.01,
             title="{} {}".format(state, network_name),
             colorbar=True,
         )
 
         plotting.show()
 
-    def plot_connectivity(self, state):
+    def plot_connectivity_graph(self, state): # plot network graph on brain template of all connections for a specific state 
         coord_list = np.asarray(self.positions[["x", "y", "z"]])
 
         avg = self.get_mean_ddc(state)
@@ -510,7 +498,7 @@ class FunctionalConnectivity:
         )
         plotting.show()
 
-    def plot_interactive_connectivity(self, state):
+    def plot_interactive_connectivity_graph(self, state): # interactive 3D plot network graph on brain template of all connections for a specific state
         coord_list = np.asarray(self.positions[["x", "y", "z"]])
         avg = self.get_mean_ddc(state)
 
