@@ -54,6 +54,7 @@ for i=1:length(subjects)
             % load single session fmri data
             cd([data_dir subjects(i).name])
             ts = dlmread([data(k).name]);
+            ts = ts(2:end,:);
 
             % DDC dual-hemisphere analysis
             V = ts;
@@ -74,6 +75,7 @@ for i=1:length(subjects)
             
             cd([ddc_dir subjects(i).name '/single_sessions'])
             csvwrite( ['Reg_DDC2H_' data(k).name(end-9:end)] , A_reg )
+            csvwrite( ['fist_Cov2H_' data(k).name(end-9:end)] , Cov )
             %figure, imagesc(A_reg)
 
         end
