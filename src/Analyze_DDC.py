@@ -2,6 +2,7 @@ from scipy import stats
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 class Analyze_DDC:
     def __init__(
         self,
@@ -77,11 +78,10 @@ class Analyze_DDC:
         # get matrix of significant connections
         sig_connections[np.where(p < self.pvalue_threshold)[0]] = 1
         sig_connections = np.reshape(sig_connections, (n_rois, n_rois))
-        
+
         if plot:
             plt.figure()
             plt.imshow(sig_connections)
             plt.show()
 
         return sig_connections
-
