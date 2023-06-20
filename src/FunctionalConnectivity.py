@@ -26,13 +26,12 @@ class FunctionalConnectivity:
         self.n_roi = n_roi
         self.thrs = thrs
         self.weights_file_name = weights_file_name
+        self.fig_dir = "../figures/"
 
         # TODO: specify from data rather than hardcoding
-        self.n1 = 4669  # prov
-        # len(self.labels[self.labels.values == 0]) # auto (n_control)
-
-        self.n2 = 1056  # prov
-        # len(self.labels[self.labels.values == 1]) # auto (n_depressed)
+        self.n1 = 4669 
+        self.n2 = 1056
+        
         self.DDC_path = (
             "/nadata/cnl/abcd/data/imaging/fmri/rsfmri/interim/DDC/baseline/raw/"
         )
@@ -279,7 +278,7 @@ class FunctionalConnectivity:
         plt.grid()
         plt.ylim([0, 1])
         plt.title("Significant connections (abs(DDC)>0.1)")
-        plt.savefig("/home/acamassa/ABCD/sig_conn_bar.eps", format="eps")
+        plt.savefig(f"{self.fig_dir}sig_conn_bar.eps", format="eps")
 
     def plot_significant_connections_graph(self):
         """plot network graph of signifiicant connections for controls and depressed"""
@@ -296,7 +295,7 @@ class FunctionalConnectivity:
         G = nx.from_numpy_array(ddc_plot)
         plt.title("Depressed")
         nx.draw(G, np.asarray(self.positions[["x", "y"]]), with_labels=True)
-        plt.savefig("/home/acamassa/ABCD/sig_conn_graph.eps", format="eps")
+        plt.savefig(f"{self.fig_dir}sig_conn_graph.eps", format="eps")
 
     def plot_mean_weights(self, state, plot=plt.figure(), colorbar=True):
         """plot mean connectivity matrix per state"""
@@ -338,7 +337,7 @@ class FunctionalConnectivity:
         plt.title("Statistically different connections")
         nx.draw(G, np.asarray(self.positions[["x", "y"]]), with_labels=True)
 
-        plt.savefig("/home/acamassa/ABCD/sig_conn_matrix.eps", format="eps")
+        plt.savefig(f"{self.fig_dir}sig_conn_matrix.eps", format="eps")
 
     def plot_means_connectivity_matrices(self, colorbar=False):
         """plot mean connectivity matrix for controls and depressed"""
@@ -474,7 +473,7 @@ class FunctionalConnectivity:
         )
         plt.title("{} significantly different connections".format(network_name))
         plt.savefig(
-            "/home/acamassa/ABCD/sig_conn_network" + str(network_name) + ".eps",
+            f"{self.fig_dir}sig_conn_network" + str(network_name) + ".eps",
             format="eps",
         )
 
@@ -501,7 +500,7 @@ class FunctionalConnectivity:
 
         plotting.show()
         display.savefig(
-            "/home/acamassa/ABCD/network_connectivity"
+            f"{self.fig_dir}network_connectivity"
             + str(network_name)
             + str(state)
             + ".eps"
@@ -521,7 +520,7 @@ class FunctionalConnectivity:
         )
         plotting.show()
         display.savefig(
-            "/home/acamassa/ABCD/network_connectivity" + str(state) + ".eps"
+            f"{self.fig_dir}network_connectivity" + str(state) + ".eps"
         )
 
     def plot_interactive_connectivity_graph(self, state):
