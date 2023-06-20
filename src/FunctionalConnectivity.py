@@ -7,6 +7,7 @@ import numpy as np
 import glob
 import os
 import pandas as pd
+import random
 import matplotlib.pyplot as plt
 import networkx as nx
 from scipy.stats import mannwhitneyu
@@ -36,6 +37,7 @@ class FunctionalConnectivity:
         self.DDC_path = (
             "/nadata/cnl/abcd/data/imaging/fmri/rsfmri/interim/DDC/baseline/raw/"
         )
+            
         self.DMN_indices = [12, 21, 6, 23, 31, 46, 55, 40, 57, 65]
         self.DMN_labels = [
             "l-mOFC",
@@ -49,6 +51,10 @@ class FunctionalConnectivity:
             "r-Prec",
             "r-TPO",
         ]
+        if self.weights_file_name.startswith("subc_"):
+            y=30
+            self.DMN_indices=list(map(y.__add__, self.DMN_indices))
+            
         self.CEN_indices = [6, 12, 25, 26, 27, 40, 46, 59, 60, 61]
         self.CEN_labels = [
             "l-IPL",
@@ -62,19 +68,38 @@ class FunctionalConnectivity:
             "r-SPG",
             "r-SPL",
         ]
-        self.SN_indices = [33, 24, 31, 67, 58, 65]
-        self.SN_labels = [
-            "l-Ins",
-            "l-raACC",
-            "l-TP",
-            "r-Ins",
-            "r-raACC",
-            "r-TP",
-        ]
+        if self.weights_file_name.startswith("subc_"):
+            y=30
+            self.CEN_indices=list(map(y.__add__, self.CEN_indices))
+            
 
+        if self.weights_file_name.startswith("subc_"):
+            self.SN_indices = [13, 63, 54, 61, 27, 97, 88, 95]
+            self.SN_labels = [
+                "l-Amy",
+                "l-Ins",
+                "l-raACC",
+                "l-TP",
+                "r-Amy",
+                "r-Ins",
+                "r-raACC",
+                "r-TP",
+                
+            ]
+        else:
+            self.SN_indices = [33, 24, 31, 67, 58, 65]
+            self.SN_labels = [
+                "l-Ins",
+                "l-raACC",
+                "l-TP",
+                "r-Ins",
+                "r-raACC",
+                "r-TP",
+            ]
+            
         self.positions = pd.read_csv(
             "/nadata/cnl/abcd/data/imaging/fmri/rsfmri/interim/segmented/baseline/downloads/sub-NDARINV04GAB2AA/ROIs_centroid_coordinates.csv"
-        )[30:]
+        )
 
         # builds the dataset
         dataset = self.build_dataset()
@@ -174,6 +199,7 @@ class FunctionalConnectivity:
             depress,
         )
 
+        
     def get_binary_connections_percentage_control(self):
         sig_conn = np.reshape(
             sum(self.control_weights_vec) / np.shape(self.control_weights_vec)[0],
@@ -279,24 +305,32 @@ class FunctionalConnectivity:
         plt.grid()
         plt.ylim([0, 1])
         plt.title("Significant connections (abs(DDC)>0.1)")
-        plt.savefig("/home/acamassa/ABCD/sig_conn_bar.eps", format="eps")
+        #plt.savefig("/home/acamassa/ABCD/sig_conn_bar.eps", format="eps")
 
     def plot_significant_connections_graph(self):
         """plot network graph of signifiicant connections for controls and depressed"""
         sig_connect_control = self.get_binary_connections_percentage_control()
         sig_connect_depress = self.get_binary_connections_percentage_control()
-        ddc_plot = sig_connect_control > 0.65
+        
+        if self.weights_file_name.startswith("subc_"):
+            thr=0.25
+        else:
+            thr=0.65
+            
+        ddc_plot = sig_connect_control > thr
         G = nx.from_numpy_array(ddc_plot)
         plt.figure(figsize=(10, 10))
+        if not self.weights_file_name.startswith("subc_"):
+            self.positions=self.positions[30:]
         plt.subplot(121)
         nx.draw(G, np.asarray(self.positions[["x", "y"]]), with_labels=True)
         plt.title("Control")
         plt.subplot(122)
-        ddc_plot = sig_connect_depress > 0.65
+        ddc_plot = sig_connect_depress > thr
         G = nx.from_numpy_array(ddc_plot)
         plt.title("Depressed")
         nx.draw(G, np.asarray(self.positions[["x", "y"]]), with_labels=True)
-        plt.savefig("/home/acamassa/ABCD/sig_conn_graph.eps", format="eps")
+        #plt.savefig("/home/acamassa/ABCD/sig_conn_graph.eps", format="eps")
 
     def plot_mean_weights(self, state, plot=plt.figure(), colorbar=True):
         """plot mean connectivity matrix per state"""
@@ -332,13 +366,15 @@ class FunctionalConnectivity:
         plt.title("Statistically different connections")
         plt.xlabel("ROI #")
         plt.ylabel("ROI #")
-        plt.figure(figsize=(15, 15))
+        if not self.weights_file_name.startswith("subc_"):
+            self.positions=self.positions[30:]
+        plt.figure(figsize=(15, 15)) 
 
         G = nx.from_numpy_array(stat_diff)
         plt.title("Statistically different connections")
         nx.draw(G, np.asarray(self.positions[["x", "y"]]), with_labels=True)
 
-        plt.savefig("/home/acamassa/ABCD/sig_conn_matrix.eps", format="eps")
+        #plt.savefig("/home/acamassa/ABCD/sig_conn_matrix.eps", format="eps")
 
     def plot_means_connectivity_matrices(self, colorbar=False):
         """plot mean connectivity matrix for controls and depressed"""
@@ -390,6 +426,23 @@ class FunctionalConnectivity:
         plt.title("std DDC depr")
         plt.xlabel("ROI #")
         plt.ylabel("ROI #")
+        
+    def plot_random_matrices(self, state):
+        """plot 25 random DDC matrices"""
+        if state=="control":
+            DDC = self.control_weights
+        else:
+            DDC = self.depress_weights
+        n=random.sample(range(len(DDC)),25)
+        fig=plt.figure(figsize=(10,10))
+        k=0
+        for i in n:
+            ax = fig.add_subplot(5,5,k+1)
+            plt.imshow(DDC[i,:,:])
+            plt.clim([-0.1,0.1])
+
+            plt.axis('off')
+            k=k+1
 
     def subset_fc(self, fc, include):
         """get subnetwork connectivity"""
@@ -460,6 +513,8 @@ class FunctionalConnectivity:
         _, p = mannwhitneyu(network_control, network_depr)
 
         G = nx.from_numpy_array(p < 0.05)
+        if not self.weights_file_name.startswith("subc_"):
+            self.positions=self.positions[30:]
         coord_list = np.asarray(self.positions[["x", "y"]])
         plt.figure(figsize=(5, 5))
         labeldict = {}
@@ -473,15 +528,16 @@ class FunctionalConnectivity:
             labels=labeldict,
         )
         plt.title("{} significantly different connections".format(network_name))
-        plt.savefig(
-            "/home/acamassa/ABCD/sig_conn_network" + str(network_name) + ".eps",
-            format="eps",
-        )
+        #plt.savefig(
+        #    "/home/acamassa/ABCD/sig_conn_network" + str(network_name) + ".eps",
+        #    format="eps",
+        #)
 
     def plot_network_connectivity_graph(self, network_name, state):
         """plot network graph on brain template of connections for a specific subnetwork and state"""
         indices = self.get_network_indices(network_name)
-
+        if not self.weights_file_name.startswith("subc_"):
+            self.positions=self.positions[30:]
         coord_list = np.asarray(self.positions[["x", "y", "z"]])
         avg = self.get_mean_ddc(state)
         a = self.subset_fc(avg, indices)
@@ -489,6 +545,8 @@ class FunctionalConnectivity:
             ev = 0.5
         elif self.weights_file_name.startswith("Reg"):
             ev = 0.005
+        elif self.weights_file_name.startswith("subc_Reg"):
+            ev = 0.0025
         display = plotting.plot_connectome(
             a,
             coord_list[indices, :],
@@ -500,15 +558,17 @@ class FunctionalConnectivity:
         )
 
         plotting.show()
-        display.savefig(
-            "/home/acamassa/ABCD/network_connectivity"
-            + str(network_name)
-            + str(state)
-            + ".eps"
-        )
+        #display.savefig(
+        #    "/home/acamassa/ABCD/network_connectivity"
+        #    + str(network_name)
+        #    + str(state)
+        #    + ".eps"
+        #)
 
     def plot_connectivity_graph(self, state):
         """plot network graph on brain template of all connections for a specific state"""
+        if not self.weights_file_name.startswith("subc_"):
+            self.positions=self.positions[30:]
         coord_list = np.asarray(self.positions[["x", "y", "z"]])
 
         avg = self.get_mean_ddc(state)
@@ -520,12 +580,14 @@ class FunctionalConnectivity:
             title="{}".format(state),
         )
         plotting.show()
-        display.savefig(
-            "/home/acamassa/ABCD/network_connectivity" + str(state) + ".eps"
-        )
+        #display.savefig(
+        #    "/home/acamassa/ABCD/network_connectivity" + str(state) + ".eps"
+        #)
 
     def plot_interactive_connectivity_graph(self, state):
         """interactive 3D plot network graph on brain template of all connections for a specific state"""
+        if not self.weights_file_name.startswith("subc_"):
+            self.positions=self.positions[30:]
         coord_list = np.asarray(self.positions[["x", "y", "z"]])
         avg = self.get_mean_ddc(state)
 
