@@ -22,12 +22,13 @@ class FunctionalConnectivity:
         n_roi,  # TODO: specify from data?
         thrs,  # binarizatin threshold
         weights_file_name,
+        fig_dir,
     ):
         self.labels = labels
         self.n_roi = n_roi
         self.thrs = thrs
         self.weights_file_name = weights_file_name
-        self.fig_dir = "../figures/"
+        self.fig_dir = fig_dir #"../figures/"
 
         # TODO: specify from data rather than hardcoding
         self.n1 = 4669 
@@ -304,11 +305,9 @@ class FunctionalConnectivity:
         plt.grid()
         plt.ylim([0, 1])
         plt.title("Significant connections (abs(DDC)>0.1)")
-<<<<<<< HEAD
-        #plt.savefig("/home/acamassa/ABCD/sig_conn_bar.eps", format="eps")
-=======
+
         plt.savefig(f"{self.fig_dir}sig_conn_bar.eps", format="eps")
->>>>>>> 75905ac681f410410e8a38ad6e75a1120f4f027c
+
 
     def plot_significant_connections_graph(self):
         """plot network graph of signifiicant connections for controls and depressed"""
@@ -333,11 +332,9 @@ class FunctionalConnectivity:
         G = nx.from_numpy_array(ddc_plot)
         plt.title("Depressed")
         nx.draw(G, np.asarray(self.positions[["x", "y"]]), with_labels=True)
-<<<<<<< HEAD
-        #plt.savefig("/home/acamassa/ABCD/sig_conn_graph.eps", format="eps")
-=======
+
         plt.savefig(f"{self.fig_dir}sig_conn_graph.eps", format="eps")
->>>>>>> 75905ac681f410410e8a38ad6e75a1120f4f027c
+
 
     def plot_mean_weights(self, state, plot=plt.figure(), colorbar=True):
         """plot mean connectivity matrix per state"""
@@ -381,11 +378,9 @@ class FunctionalConnectivity:
         plt.title("Statistically different connections")
         nx.draw(G, np.asarray(self.positions[["x", "y"]]), with_labels=True)
 
-<<<<<<< HEAD
-        #plt.savefig("/home/acamassa/ABCD/sig_conn_matrix.eps", format="eps")
-=======
+
         plt.savefig(f"{self.fig_dir}sig_conn_matrix.eps", format="eps")
->>>>>>> 75905ac681f410410e8a38ad6e75a1120f4f027c
+
 
     def plot_means_connectivity_matrices(self, colorbar=False):
         """plot mean connectivity matrix for controls and depressed"""
@@ -539,17 +534,12 @@ class FunctionalConnectivity:
             labels=labeldict,
         )
         plt.title("{} significantly different connections".format(network_name))
-<<<<<<< HEAD
-        #plt.savefig(
-        #    "/home/acamassa/ABCD/sig_conn_network" + str(network_name) + ".eps",
-        #    format="eps",
-        #)
-=======
+
         plt.savefig(
             f"{self.fig_dir}sig_conn_network" + str(network_name) + ".eps",
             format="eps",
         )
->>>>>>> 75905ac681f410410e8a38ad6e75a1120f4f027c
+
 
     def plot_network_connectivity_graph(self, network_name, state):
         """plot network graph on brain template of connections for a specific subnetwork and state"""
@@ -576,21 +566,14 @@ class FunctionalConnectivity:
         )
 
         plotting.show()
-<<<<<<< HEAD
-        #display.savefig(
-        #    "/home/acamassa/ABCD/network_connectivity"
-        #    + str(network_name)
-        #    + str(state)
-        #    + ".eps"
-        #)
-=======
+
         display.savefig(
             f"{self.fig_dir}network_connectivity"
             + str(network_name)
             + str(state)
             + ".eps"
         )
->>>>>>> 75905ac681f410410e8a38ad6e75a1120f4f027c
+
 
     def plot_connectivity_graph(self, state):
         """plot network graph on brain template of all connections for a specific state"""
@@ -607,15 +590,11 @@ class FunctionalConnectivity:
             title="{}".format(state),
         )
         plotting.show()
-<<<<<<< HEAD
-        #display.savefig(
-        #    "/home/acamassa/ABCD/network_connectivity" + str(state) + ".eps"
-        #)
-=======
+
         display.savefig(
             f"{self.fig_dir}network_connectivity" + str(state) + ".eps"
         )
->>>>>>> 75905ac681f410410e8a38ad6e75a1120f4f027c
+
 
     def plot_interactive_connectivity_graph(self, state):
         """interactive 3D plot network graph on brain template of all connections for a specific state"""
