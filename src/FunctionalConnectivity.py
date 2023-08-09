@@ -482,7 +482,7 @@ class FunctionalConnectivity:
 
         a = self.subset_fc(avg, network_indices)
 
-        plt.imshow(a)
+        plt.imshow(a,cmap='RdBu')
         plt.yticks(np.arange(len(network_indices)), network_labels)
         plt.xticks(np.arange(len(network_indices)), network_labels, rotation="vertical")
 
@@ -505,9 +505,17 @@ class FunctionalConnectivity:
 
         # non parametric statistical test for independent variables
         _, p = mannwhitneyu(network_control, network_depr)
-
+        
+        avg = self.get_mean_ddc("control")
+        a = self.subset_fc(avg, indices)
+        avg = self.get_mean_ddc("depressed")
+        b = self.subset_fc(avg, indices)
+        diff=abs(b)-abs(a)
+        diff[np.where(p>0.05)]=0
         plt.subplot(133)
-        plt.imshow(p < 0.05)
+#         plt.imshow(p < 0.05)
+        plt.imshow(diff, cmap='RdBu')
+        plt.clim([-np.max(diff), np.max(diff)])
         plt.yticks(np.arange(len(indices)), labels)
         plt.xticks(np.arange(len(indices)), labels, rotation="vertical")
         plt.title("Statisticaly different fc")
