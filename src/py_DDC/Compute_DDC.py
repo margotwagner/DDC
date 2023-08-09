@@ -6,6 +6,7 @@ from numpy.linalg import matrix_rank
 from sklearn.linear_model import Ridge
 from sklearn.linear_model import RidgeCV
 import sklearn
+from fracdiff import fdiff
 
 def test():
     print('yes')
@@ -179,3 +180,35 @@ def compute_ddc(ts, TR, d):
             Reg_DDC[n, :] = coef.T
 
     return Cov, DDC, Reg_DDC, nl_DDC
+
+
+def compute_fddc(ts, TR, d):
+    
+    if np.max(ts[0,:])==ts[0,-1] and np.min(ts[0,:])==ts[0,0]:
+        ts=ts[1:,:]
+
+    V_obs = zscore(ts, ddof=1)
+    T, N = np.shape(ts)
+    
+    diff_cx=fdiff(V_obs, d,axis=0)
+    Csample = np.cov(np.hstack((diff_cx, ts)).T)
+    dFrac = Csample[0:N, N : N + N]
+    
+    Cov, Precision, B, _ = estimators(V_obs, 0, TR)
+    
+    FDDC = dFrac @  Precision
+    
+    C = dFrac
+    B = Cov
+    Reg_FDDC = np.zeros(np.shape(C))
+
+    l = 1e-2
+    Bb = sklearn.preprocessing.scale(B)
+    for n in range(len(C)):
+        ci = C[n, :]
+        ridgereg = Ridge(alpha=l)
+        ridgereg.fit(Bb, ci.T)
+        coef = ridgereg.coef_
+        Reg_FDDC[n, :] = coef.T
+    
+    return FDDC, Reg_FDDC

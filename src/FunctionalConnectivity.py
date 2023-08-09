@@ -31,8 +31,8 @@ class FunctionalConnectivity:
         self.fig_dir = fig_dir #"../figures/"
 
         # TODO: specify from data rather than hardcoding
-        self.n1 = 4669 
-        self.n2 = 1056
+        self.n1 = 5000 
+        self.n2 = 5000
         
         self.DDC_path = (
             "/nadata/cnl/abcd/data/imaging/fmri/rsfmri/interim/DDC/baseline/raw/"
@@ -96,10 +96,15 @@ class FunctionalConnectivity:
                 "r-raACC",
                 "r-TP",
             ]
-            
-        self.positions = pd.read_csv(
-            "/nadata/cnl/abcd/data/imaging/fmri/rsfmri/interim/segmented/baseline/downloads/sub-NDARINV04GAB2AA/ROIs_centroid_coordinates.csv"
-        )
+        
+        if self.weights_file_name.startswith("subc_"):
+            self.positions = pd.read_csv(
+                "/nadata/cnl/abcd/data/imaging/fmri/rsfmri/interim/segmented/baseline/downloads/sub-NDARINV04GAB2AA/ROIs_centroid_coordinates.csv"
+            )
+        else:
+            self.positions = pd.read_csv(
+                "/nadata/cnl/abcd/data/imaging/fmri/rsfmri/interim/segmented/baseline/downloads/sub-NDARINV04GAB2AA/ROIs_centroid_coordinates.csv"
+            )[30:]
 
         # builds the dataset
         dataset = self.build_dataset()
@@ -141,50 +146,58 @@ class FunctionalConnectivity:
 
             for f in files:
                 if os.path.exists(f):
-                    try:
-                        # Control subjects
-                        if self.labels.values[i] == 0:
-                            control_weights[j, :, :] = np.asarray(
-                                pd.read_csv(f, header=None)
-                            )
+           
+                    # Control subjects
+                    if self.labels.values[i] == 0:
+                        d=np.asarray(pd.read_csv(f, header=None))
+                        if not len(d)<self.n_roi:
+                            if sum(sum(np.isnan(d)))<1:
+                                control_weights[j, :, :] = np.asarray(
+                                    pd.read_csv(f, header=None)
+                                )
 
-                            # Threshold binarization (to be replaced by bootstrap) and reshape
-                            control_weights_vec[j, :] = np.reshape(
-                                (abs(control_weights[j, :, :]) > self.thrs) * 1,
-                                (1, self.n_roi * self.n_roi),
-                            )
+                                # Threshold binarization (to be replaced by bootstrap) and reshape
+                                control_weights_vec[j, :] = np.reshape(
+                                    (abs(control_weights[j, :, :]) > self.thrs) * 1,
+                                    (1, self.n_roi * self.n_roi),
+                                )
 
-                            ctrl_files.append(f)
+                                ctrl_files.append(f)
 
-                            j += 1
+                                j += 1
 
-                        # Depressed subjects
-                        else:
-                            depress_weights[k, :, :] = np.asarray(
-                                pd.read_csv(f, header=None)
-                            )
-                            # Threshold binarization (to be replaced by bootstrap) and reshape
-                            depress_weights_vec[k, :] = np.reshape(
-                                (abs(depress_weights[k, :, :]) > self.thrs) * 1,
-                                (1, self.n_roi * self.n_roi),
-                            )
+                    # Depressed subjects
+                    else:
+                        d=np.asarray(pd.read_csv(f, header=None))
+                        if not len(d)<self.n_roi:
+                            if sum(sum(np.isnan(d)))<1:
+                                depress_weights[k, :, :] = np.asarray(
+                                    pd.read_csv(f, header=None)
+                                )
+                                # Threshold binarization (to be replaced by bootstrap) and reshape
+                                depress_weights_vec[k, :] = np.reshape(
+                                    (abs(depress_weights[k, :, :]) > self.thrs) * 1,
+                                    (1, self.n_roi * self.n_roi),
+                                )
 
-                            k += 1
+                                k += 1
 
-                            depr_files.append(f)
+                                depr_files.append(f)
 
-                    except:
-                        # no DDC ROIs available
-                        missing_rois.append(f)
+
                 else:
                     no_weights.append(f)
-
-            control = np.reshape(
-                control_weights, (len(control_weights), self.n_roi * self.n_roi)
-            )
-            depress = np.reshape(
-                depress_weights, (len(depress_weights), self.n_roi * self.n_roi)
-            )
+                    
+        control_weights=control_weights[:j,:,:]
+        depress_weights=depress_weights[:k,:,:]
+        control_weights_vec=control_weights_vec[:j,:]
+        depress_weights_vec=depress_weights_vec[:k,:]
+        control = np.reshape(
+            control_weights, (len(control_weights), self.n_roi * self.n_roi)
+        )
+        depress = np.reshape(
+            depress_weights, (len(depress_weights), self.n_roi * self.n_roi)
+        )
 
         return (
             no_weights,
@@ -306,13 +319,13 @@ class FunctionalConnectivity:
         plt.ylim([0, 1])
         plt.title("Significant connections (abs(DDC)>0.1)")
 
-        plt.savefig(f"{self.fig_dir}sig_conn_bar.eps", format="eps")
+        plt.savefig(f"{self.fig_dir}{self.weights_file_name.split('*')[0]}_sig_conn_bar.eps", format="eps")
 
 
     def plot_significant_connections_graph(self):
         """plot network graph of signifiicant connections for controls and depressed"""
         sig_connect_control = self.get_binary_connections_percentage_control()
-        sig_connect_depress = self.get_binary_connections_percentage_control()
+        sig_connect_depress = self.get_binary_connections_percentage_depress()
         
         if self.weights_file_name.startswith("subc_"):
             thr=0.25
@@ -322,8 +335,7 @@ class FunctionalConnectivity:
         ddc_plot = sig_connect_control > thr
         G = nx.from_numpy_array(ddc_plot)
         plt.figure(figsize=(10, 10))
-        if not self.weights_file_name.startswith("subc_"):
-            self.positions=self.positions[30:]
+
         plt.subplot(121)
         nx.draw(G, np.asarray(self.positions[["x", "y"]]), with_labels=True)
         plt.title("Control")
@@ -333,7 +345,7 @@ class FunctionalConnectivity:
         plt.title("Depressed")
         nx.draw(G, np.asarray(self.positions[["x", "y"]]), with_labels=True)
 
-        plt.savefig(f"{self.fig_dir}sig_conn_graph.eps", format="eps")
+        plt.savefig(f"{self.fig_dir}{self.weights_file_name.split('*')[0]}_sig_conn_graph.eps", format="eps")
 
 
     def plot_mean_weights(self, state, plot=plt.figure(), colorbar=True):
@@ -370,8 +382,7 @@ class FunctionalConnectivity:
         plt.title("Statistically different connections")
         plt.xlabel("ROI #")
         plt.ylabel("ROI #")
-        if not self.weights_file_name.startswith("subc_"):
-            self.positions=self.positions[30:]
+
         plt.figure(figsize=(15, 15)) 
 
         G = nx.from_numpy_array(stat_diff)
@@ -379,7 +390,7 @@ class FunctionalConnectivity:
         nx.draw(G, np.asarray(self.positions[["x", "y"]]), with_labels=True)
 
 
-        plt.savefig(f"{self.fig_dir}sig_conn_matrix.eps", format="eps")
+        plt.savefig(f"{self.fig_dir}{self.weights_file_name.split('*')[0]}_sig_conn_matrix.eps", format="eps")
 
 
     def plot_means_connectivity_matrices(self, colorbar=False):
@@ -519,8 +530,7 @@ class FunctionalConnectivity:
         _, p = mannwhitneyu(network_control, network_depr)
 
         G = nx.from_numpy_array(p < 0.05)
-        if not self.weights_file_name.startswith("subc_"):
-            self.positions=self.positions[30:]
+
         coord_list = np.asarray(self.positions[["x", "y"]])
         plt.figure(figsize=(5, 5))
         labeldict = {}
@@ -536,7 +546,7 @@ class FunctionalConnectivity:
         plt.title("{} significantly different connections".format(network_name))
 
         plt.savefig(
-            f"{self.fig_dir}sig_conn_network" + str(network_name) + ".eps",
+            f"{self.fig_dir}{self.weights_file_name.split('*')[0]}_sig_conn_network" + str(network_name) + ".eps",
             format="eps",
         )
 
@@ -544,8 +554,7 @@ class FunctionalConnectivity:
     def plot_network_connectivity_graph(self, network_name, state):
         """plot network graph on brain template of connections for a specific subnetwork and state"""
         indices = self.get_network_indices(network_name)
-        if not self.weights_file_name.startswith("subc_"):
-            self.positions=self.positions[30:]
+
         coord_list = np.asarray(self.positions[["x", "y", "z"]])
         avg = self.get_mean_ddc(state)
         a = self.subset_fc(avg, indices)
@@ -560,7 +569,7 @@ class FunctionalConnectivity:
             coord_list[indices, :],
             node_color="r",
             edge_cmap=None,
-            edge_vmax=ev,
+#             edge_vmax=ev,
             title="{} {}".format(state, network_name),
             colorbar=True,
         )
@@ -568,7 +577,7 @@ class FunctionalConnectivity:
         plotting.show()
 
         display.savefig(
-            f"{self.fig_dir}network_connectivity"
+            f"{self.fig_dir}{self.weights_file_name.split('*')[0]}_network_connectivity"
             + str(network_name)
             + str(state)
             + ".eps"
@@ -577,8 +586,7 @@ class FunctionalConnectivity:
 
     def plot_connectivity_graph(self, state):
         """plot network graph on brain template of all connections for a specific state"""
-        if not self.weights_file_name.startswith("subc_"):
-            self.positions=self.positions[30:]
+
         coord_list = np.asarray(self.positions[["x", "y", "z"]])
 
         avg = self.get_mean_ddc(state)
@@ -592,14 +600,13 @@ class FunctionalConnectivity:
         plotting.show()
 
         display.savefig(
-            f"{self.fig_dir}network_connectivity" + str(state) + ".eps"
+            f"{self.fig_dir}{self.weights_file_name.split('*')[0]}_network_connectivity" + str(state) + ".eps"
         )
 
 
     def plot_interactive_connectivity_graph(self, state):
         """interactive 3D plot network graph on brain template of all connections for a specific state"""
-        if not self.weights_file_name.startswith("subc_"):
-            self.positions=self.positions[30:]
+
         coord_list = np.asarray(self.positions[["x", "y", "z"]])
         avg = self.get_mean_ddc(state)
 
