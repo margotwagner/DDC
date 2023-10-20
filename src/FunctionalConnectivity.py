@@ -36,55 +36,78 @@ class FunctionalConnectivity:
         self.n1 = 5000
         self.n2 = 5000
 
+        self.subc=['l-CWM', 'l-LV', 'l-ILV', 'l-CBWM', 'l-CBC','l-TH','l-CAU','l-PUT', 'l-GP',
+        '3V', '4V', 'BSM', 'l-HPC', 'l-Amy','CSF','l-NAcc', 'l-vDC',
+        'r-CWM', 'r-LV', 'r-ILV', 'r-CBWM', 'r-CBC','r-TH','r-CAU','r-PUT', 'r-GP',
+        'r-HPC', 'r-Amy','r-NAcc', 'r-vDC']
+
+        self.left = ['l-bsts', 'l-CACg', 'l-CMF', 'l-Cu', 'l-En',
+                        'l-Fu', 'l-IP', 'l-IT', 'l-IstCg', 'l-LO',
+                        'l-LOrF', 'l-Lg', 'l-MOrF', 'l-MT', 'l-PaH',
+                        'l-PaC', 'l-Op', 'l-Or', 'l-Tr', 'l-PerCa', 'l-PoC',
+                        'l-PoCg', 'l-PreC', 'l-PreCu', 'l-RoACg', 'l-RoMF',
+                        'l-SF', 'l-SP', 'l-ST', 'l-SM', 'l-FPol', 'l-TPol', 'l-TrT', 'l-Ins']
+
+        self.right = ['r' + label[1:] for label in self.left]
+
+        # Concatenate the two lists
+        self.all_ROIs = self.subc + self.left + self.right
 
 
         self.DMN_indices = [12, 21, 6, 23, 31, 46, 55, 40, 57, 65]
-        self.DMN_labels = [
-            "l-mOFC",
-            "l-PCC",
-            "l-IPL",
-            "l-Prec",
-            "l-TPO",
-            "r-mOFC",
-            "r-PCC",
-            "r-IPL",
-            "r-Prec",
-            "r-TPO",
-        ]
         if self.weights_file_name.startswith("subc_"):
             y = 30
             self.DMN_indices = list(map(y.__add__, self.DMN_indices))
+        self.DMN_labels = [self.all_ROIs[i] for i in self.DMN_indices]
+        # [
+        #     "l-mOFC",
+        #     "l-PCC",
+        #     "l-IPL",
+        #     "l-Prec",
+        #     "l-TPO",
+        #     "r-mOFC",
+        #     "r-PCC",
+        #     "r-IPL",
+        #     "r-Prec",
+        #     "r-TPO",
+        # ]
+
 
         self.CEN_indices = [6, 12, 25, 26, 27, 40, 46, 59, 60, 61]
-        self.CEN_labels = [
-            "l-IPL",
-            "l-mOFC",
-            "l-mPF",
-            "l-SPG",
-            "l-SPL",
-            "r-IPL",
-            "r-mOFC",
-            "r-mPF",
-            "r-SPG",
-            "r-SPL",
-        ]
         if self.weights_file_name.startswith("subc_"):
             y = 30
             self.CEN_indices = list(map(y.__add__, self.CEN_indices))
 
+        self.CEN_labels = [self.all_ROIs[i] for i in self.CEN_indices]
+        # [
+        #     "l-IPL",
+        #     "l-mOFC",
+        #     "l-mPF",
+        #     "l-SPG",
+        #     "l-SPL",
+        #     "r-IPL",
+        #     "r-mOFC",
+        #     "r-mPF",
+        #     "r-SPG",
+        #     "r-SPL",
+        # ]
+
+
 
         self.SN_indices = [33, 24, 31, 67, 58, 65]
-        self.SN_labels = [
-            "l-Ins",
-            "l-raACC",
-            "l-TP",
-            "r-Ins",
-            "r-raACC",
-            "r-TP",
-        ]
         if self.weights_file_name.startswith("subc_"):
             y = 30
             self.SN_indices = list(map(y.__add__, self.SN_indices))
+        self.SN_labels = [self.all_ROIs[i] for i in self.SN_indices]
+        # [
+        #     "l-Ins",
+        #     "l-raACC",
+        #     "l-TP",
+        #     "r-Ins",
+        #     "r-raACC",
+        #     "r-TP",
+        # ]
+
 
         if self.weights_file_name.startswith("subc_"):
             self.positions = pd.read_csv(
@@ -307,8 +330,8 @@ class FunctionalConnectivity:
         plt.title("Significant connections (abs(DDC)>0.1)")
 
         plt.savefig(
-            f"{self.fig_dir}{self.weights_file_name.split('*')[0]}_sig_conn_bar.eps",
-            format="eps",
+            f"{self.fig_dir}{self.weights_file_name.split('*')[0]}_sig_conn_bar.svg",
+            format="svg",
         )
 
     def plot_significant_connections_graph(self):
@@ -335,8 +358,8 @@ class FunctionalConnectivity:
         nx.draw(G, np.asarray(self.positions[["x", "y"]]), with_labels=True)
 
         plt.savefig(
-            f"{self.fig_dir}{self.weights_file_name.split('*')[0]}_sig_conn_graph.eps",
-            format="eps",
+            f"{self.fig_dir}{self.weights_file_name.split('*')[0]}_sig_conn_graph.svg",
+            format="svg",
         )
 
     def plot_mean_weights(self, state, plot=plt.figure(), colorbar=True):
@@ -381,8 +404,11 @@ class FunctionalConnectivity:
         plt.xlabel("ROI #")
         plt.ylabel("ROI #")
         plt.subplot(122)
-        plt.imshow(diff, cmap="RdBu")
-        plt.clim([-np.quantile(diff,0.99), np.quantile(diff,0.99)])
+        im=plt.imshow(diff, cmap="RdBu")
+        for i in range(len(diff)):
+            im.axes.add_patch(plt.Rectangle((i - 0.5, i - 0.5), 1, 1, fill=True, color="gray"))
+        plt.clim([-np.max(diff), np.max(diff)])
+        plt.colorbar()
         plt.title("Statistically different connections")
         plt.xlabel("ROI #")
         plt.ylabel("ROI #")
@@ -391,10 +417,19 @@ class FunctionalConnectivity:
         #G = nx.from_numpy_array(stat_diff)
         #plt.title("Statistically different connections")
         #nx.draw(G, np.asarray(self.positions[["x", "y"]]), with_labels=True)
+        p_table=pd.DataFrame(columns=['Areas','p-value'])
+        pv=np.reshape(p, (self.n_roi, self.n_roi))
+        for i in range(self.n_roi):
+            for j in range(self.n_roi):
+                new_row={'Areas':self.all_ROIs[i]+'-'+self.all_ROIs[j], 'p-value':pv[i,j]}
+                p_table=p_table.append(new_row,ignore_index=True)
+
+        p_table.to_csv('/home/acamassa/ABCD/DDC/figures/p_values_table.csv')
+
 
         plt.savefig(
-            f"{self.fig_dir}{self.weights_file_name.split('*')[0]}_sig_conn_matrix.eps",
-            format="eps",
+            f"{self.fig_dir}{self.weights_file_name.split('*')[0]}_sig_conn_matrix.svg",
+            format="svg",
         )
 
     def plot_means_connectivity_matrices(self, colorbar=False):
@@ -420,6 +455,8 @@ class FunctionalConnectivity:
         plt.figure(figsize=(10, 10))
         plt.subplot(221)
         im = plt.imshow(avg_ddc_ctrl)
+        for i in range(len(avg_ddc_ctrl)):
+            im.axes.add_patch(plt.Rectangle((i - 0.5, i - 0.5), 1, 1, fill=True, color="gray"))
         # plt.clim([-0.01, 0.01])
         plt.title("avg DDC control")
         plt.xlabel("ROI #")
@@ -427,6 +464,8 @@ class FunctionalConnectivity:
 
         plt.subplot(222)
         im = plt.imshow(avg_ddc_depr)
+        for i in range(len(avg_ddc_depr)):
+            im.axes.add_patch(plt.Rectangle((i - 0.5, i - 0.5), 1, 1, fill=True, color="gray"))
         # plt.clim([-0.01, 0.01])
         plt.title("avg DDC depr")
         plt.xlabel("ROI #")
@@ -448,6 +487,11 @@ class FunctionalConnectivity:
         plt.xlabel("ROI #")
         plt.ylabel("ROI #")
 
+        plt.savefig(
+            f"{self.fig_dir}{self.weights_file_name.split('*')[0]}_mean_std.svg",
+            format="svg",
+        )
+
     def plot_random_matrices(self, state):
         """plot 25 random DDC matrices"""
         if state == "control":
@@ -460,7 +504,8 @@ class FunctionalConnectivity:
         for i in n:
             ax = fig.add_subplot(5, 5, k + 1)
             plt.imshow(DDC[i, :, :])
-            plt.clim([-0.1, 0.1])
+            # plt.clim([-0.1, 0.1])
+            plt.colorbar()
 
             plt.axis("off")
             k = k + 1
@@ -471,25 +516,26 @@ class FunctionalConnectivity:
         a = a[:, include]
         return a
 
-    def plot_network_condition(
-        self, network_indices, network_labels, network_name, state, plot, subplot_number
-    ):
-        """plot connectivity matrix for a specific subnetwork"""
-        plt.subplot(subplot_number)
+    # def plot_network_condition(
+    #     self, network_indices, network_labels, network_name, state, plot, subplot_number
+    # ):
+    #     """plot connectivity matrix for a specific subnetwork"""
+    #     plt.subplot(subplot_number)
 
-        if state == "control":
-            plt.title("{} control".format(network_name))
-        else:
-            plt.title("{} depressed".format(network_name))
+    #     if state == "control":
+    #         plt.title("{} control".format(network_name))
+    #     else:
+    #         plt.title("{} depressed".format(network_name))
 
-        avg = self.get_mean_ddc(state)
+    #     avg = self.get_mean_ddc(state)
 
-        a = self.subset_fc(avg, network_indices)
+    #     a = self.subset_fc(avg, network_indices)
 
-        plt.imshow(a, cmap="RdBu")
-        #plt.clim([-np.quantile(a,0.99), np.quantile(a,0.99)])
-        plt.yticks(np.arange(len(network_indices)), network_labels)
-        plt.xticks(np.arange(len(network_indices)), network_labels, rotation="vertical")
+    #     plt.imshow(abs(a), cmap="RdBu")
+    #     plt.clim([0, 100])
+    #     plt.colorbar()
+    #     plt.yticks(np.arange(len(network_indices)), network_labels)
+    #     plt.xticks(np.arange(len(network_indices)), network_labels, rotation="vertical")
 
     def plot_network_heatmap(self, network_name):
         """plot binary matrix of significant connections for a specific subnetwork"""
@@ -501,12 +547,36 @@ class FunctionalConnectivity:
         network_depr = self.get_network_ddc(network_name, "depressed")
 
         # Plot control
-        self.plot_network_condition(indices, labels, network_name, "control", plt, 131)
 
-        # Plot depressed
-        self.plot_network_condition(
-            indices, labels, network_name, "depressed", plt, 132
-        )
+        avg = self.get_mean_ddc("control")
+        ctrl = self.subset_fc(avg, indices)
+        max_c=np.max(abs(ctrl))
+        
+        avg = self.get_mean_ddc("depressed")
+        depr = self.subset_fc(avg, indices)
+        max_d=np.max(abs(depr))
+        max_color=np.max([max_c,max_d])*0.8
+
+        plt.subplot(131)
+        plt.title("{} control".format(network_name))
+        im=plt.imshow(abs(ctrl), cmap="RdBu")
+        for i in range(len(ctrl)):
+            im.axes.add_patch(plt.Rectangle((i - 0.5, i - 0.5), 1, 1, fill=True, color="gray"))
+        plt.clim([0,max_color])
+        plt.colorbar()
+        plt.yticks(np.arange(len(indices)), labels)
+        plt.xticks(np.arange(len(indices)), labels, rotation="vertical")
+
+        plt.subplot(132)
+        plt.title("{} depressed".format(network_name))
+        im=plt.imshow(abs(depr), cmap="RdBu")
+        for i in range(len(depr)):
+            im.axes.add_patch(plt.Rectangle((i - 0.5, i - 0.5), 1, 1, fill=True, color="gray"))
+        plt.clim([0,max_color])
+        plt.colorbar()
+        plt.yticks(np.arange(len(indices)), labels)
+        plt.xticks(np.arange(len(indices)), labels, rotation="vertical")
+
 
         # non parametric statistical test for independent variables
         _, p = mannwhitneyu(network_control, network_depr)
@@ -520,18 +590,22 @@ class FunctionalConnectivity:
         if sum(sum(diff))>0:
             plt.subplot(133)
             #         plt.imshow(p < 0.05)
-            plt.imshow(diff, cmap="RdBu")
+            im=plt.imshow(diff, cmap="RdBu")
+            for i in range(len(diff)):
+                im.axes.add_patch(plt.Rectangle((i - 0.5, i - 0.5), 1, 1, fill=True, color="gray"))
             plt.clim([-np.max(diff), np.max(diff)])
+            plt.colorbar()
             plt.yticks(np.arange(len(indices)), labels)
             plt.xticks(np.arange(len(indices)), labels, rotation="vertical")
             plt.title("Statisticaly different fc")
 
-        # plt.title('DMN abs difference')
-        # plt.imshow(abs(a-a_d))
-        # plt.yticks(np.arange(len(DMN)),labels)
-        # plt.xticks(np.arange(len(DMN)),labels, rotation='vertical')
-        # for r in DMN:
-        #    print(Desikan_ROIs[r])
+   
+        plt.savefig(
+            f"{self.fig_dir}{self.weights_file_name.split('*')[0]}_sig_conn_matrix"
+            + str(network_name)
+            + ".svg",
+            format="svg",
+        )
 
     def plot_network_siignificant_connections_graph(self, network_name):
         """plot network graph only significantly different connections for a specific subnetwork"""
@@ -562,8 +636,8 @@ class FunctionalConnectivity:
         plt.savefig(
             f"{self.fig_dir}{self.weights_file_name.split('*')[0]}_sig_conn_network"
             + str(network_name)
-            + ".eps",
-            format="eps",
+            + ".svg",
+            format="svg",
         )
 
     def plot_network_connectivity_graph(self, network_name, state):
@@ -595,7 +669,7 @@ class FunctionalConnectivity:
             f"{self.fig_dir}{self.weights_file_name.split('*')[0]}_network_connectivity"
             + str(network_name)
             + str(state)
-            + ".eps"
+            + ".svg"
         )
     def plot_network_connectivity_graph_diff(self, network_name,ev):
         """plot differences between ctrl and depressed network graph on brain template for a specific subnetwork"""
@@ -623,6 +697,7 @@ class FunctionalConnectivity:
                 node_color="k",
                 edge_cmap="RdBu",
                 edge_vmax=ev,
+                edge_kwargs=dict(lw=4),
                 title="{}".format(network_name),
                 colorbar=True,
             )
@@ -632,7 +707,7 @@ class FunctionalConnectivity:
             display.savefig(
                 f"{self.fig_dir}{self.weights_file_name.split('*')[0]}_diff_network_connectivity"
                 + str(network_name)
-                + ".eps"
+                + ".svg"
             )
         else:
             print('no different connections to plot')
@@ -655,7 +730,7 @@ class FunctionalConnectivity:
         display.savefig(
             f"{self.fig_dir}{self.weights_file_name.split('*')[0]}_network_connectivity"
             + str(state)
-            + ".eps"
+            + ".svg"
         )
 
     def plot_interactive_connectivity_graph(self, state):
@@ -674,3 +749,31 @@ class FunctionalConnectivity:
         )
 
         return view
+
+
+    def plot_interactive_connectivity_graph_diff(self):   
+        
+        s, p = mannwhitneyu(self.control, self.depress)
+        stat_diff = np.zeros(self.n_roi * self.n_roi)
+        stat_diff[np.where(p < 0.05)[0]] = 1
+        stat_diff = np.reshape(stat_diff, (self.n_roi, self.n_roi))
+        a = self.get_mean_ddc("control")
+        b = self.get_mean_ddc("depressed")
+        diff = abs(b) - abs(a)
+        diff[np.where(stat_diff==0)]=0
+
+        coord_list = np.asarray(self.positions[["x", "y", "z"]])
+
+        view = plotting.view_connectome(
+            diff,
+            coord_list,
+            edge_cmap='RdBu',
+            edge_threshold=50,
+            symmetric_cmap=False,
+            colorbar=True,
+            node_color='k',
+        )
+        # pd.DataFrame(diff).to_csv('/home/acamassa/ABCD/DDC/figures/stat_diff_matrix.csv')
+        return view
+        
+
