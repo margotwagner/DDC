@@ -1,3 +1,11 @@
 .vscode/
 
 *.pyc
+*.ipynb_checkpoints
+
+data/*
+
+*__pycache__/
+
+figures/
+

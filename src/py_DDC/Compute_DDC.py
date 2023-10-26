@@ -8,12 +8,12 @@ from sklearn.linear_model import RidgeCV
 import sklearn
 from fracdiff import fdiff
 
+
 def test():
-    print('yes')
+    print("yes")
 
 
 def estimators(V_obs, thres, TR):
-    
     T, N = np.shape(V_obs)
     Cov = np.cov(V_obs, rowvar=False)
     precision = inv(Cov)
@@ -32,7 +32,6 @@ def estimators(V_obs, thres, TR):
 
 
 def derivative_123(f, dm, dt):
-    
     t = np.arange(dm, len(f) - dm)
     D1, D2, D3 = 0, 0, 0
     d1, d2, d3 = 0, 0, 0
@@ -43,12 +42,12 @@ def derivative_123(f, dm, dt):
             d1 += 1
             D1 += -(
                 (
-                    f[t - n2] * n1 ** 3
-                    - f[t + n2] * n1 ** 3
-                    - f[t - n1] * n2 ** 3
-                    + f[t + n1] * n2 ** 3
+                    f[t - n2] * n1**3
+                    - f[t + n2] * n1**3
+                    - f[t - n1] * n2**3
+                    + f[t + n1] * n2**3
                 )
-                / (2 * dt * n1 ** 3 * n2 - 2 * dt * n1 * n2 ** 3)
+                / (2 * dt * n1**3 * n2 - 2 * dt * n1 * n2**3)
             )
             """
             for n3 in range(n2 + 1, dm + 1):
@@ -73,7 +72,6 @@ def derivative_123(f, dm, dt):
 
 
 def dCov_numerical(cx, h, dm=4):
-    
     T, N = np.shape(cx)
     diff_cx = np.array((cx[1:, :] - cx[0:-1, :]) / h)
     rowmean = np.mean(diff_cx, axis=0)
@@ -110,17 +108,15 @@ def dCov_numerical(cx, h, dm=4):
 
 
 def prctile(x, p):
-    
     p = np.asarray(p, dtype=float)
     n = len(x)
     p = (p - 50) * n / (n - 1) + 50
     p = np.clip(p, 0, 100)
-    
+
     return np.percentile(x, p)
 
 
 def compute_ddc(ts, TR, d):
-
     # Input:
     # ts = time series (number of timepoints x number of nodes)
     # TR = time resolution
@@ -130,9 +126,9 @@ def compute_ddc(ts, TR, d):
     # DDC = dynamical differential covariance
     # Reg_DDC = regularized DDC
     # nl_DDC = non linear DDC estimator
-    
-    if np.max(ts[0,:])==ts[0,-1] and np.min(ts[0,:])==ts[0,0]:
-        ts=ts[1:,:]
+
+    if np.max(ts[0, :]) == ts[0, -1] and np.min(ts[0, :]) == ts[0, 0]:
+        ts = ts[1:, :]
 
     T, N = ts.shape
     V_obs = zscore(ts, ddof=1)
@@ -143,7 +139,6 @@ def compute_ddc(ts, TR, d):
         print("Cov is rank deficient!")
 
     if d == 2:  # using dCov2
-
         DDC = dCov2 @ Precision  # Delta L
         nl_DDC = dCov2 @ B  # Delta ReLu
 
@@ -161,8 +156,7 @@ def compute_ddc(ts, TR, d):
             coef = ridgereg.coef_
             Reg_DDC[n, :] = coef.T
 
-    elif d == 'c':  # using dCov_center
-
+    elif d == "c":  # using dCov_center
         DDC = dCov_center @ Precision  # Delta L
         nl_DDC = dCov_center @ B  # Delta ReLu
 
@@ -183,21 +177,20 @@ def compute_ddc(ts, TR, d):
 
 
 def compute_fddc(ts, TR, d):
-    
-    if np.max(ts[0,:])==ts[0,-1] and np.min(ts[0,:])==ts[0,0]:
-        ts=ts[1:,:]
+    if np.max(ts[0, :]) == ts[0, -1] and np.min(ts[0, :]) == ts[0, 0]:
+        ts = ts[1:, :]
 
     V_obs = zscore(ts, ddof=1)
     T, N = np.shape(ts)
-    
-    diff_cx=fdiff(V_obs, d,axis=0)
+
+    diff_cx = fdiff(V_obs, d, axis=0)
     Csample = np.cov(np.hstack((diff_cx, ts)).T)
     dFrac = Csample[0:N, N : N + N]
-    
+
     Cov, Precision, B, _ = estimators(V_obs, 0, TR)
-    
-    FDDC = dFrac @  Precision
-    
+
+    FDDC = dFrac @ Precision
+
     C = dFrac
     B = Cov
     Reg_FDDC = np.zeros(np.shape(C))
@@ -210,5 +203,5 @@ def compute_fddc(ts, TR, d):
         ridgereg.fit(Bb, ci.T)
         coef = ridgereg.coef_
         Reg_FDDC[n, :] = coef.T
-    
+
     return FDDC, Reg_FDDC
