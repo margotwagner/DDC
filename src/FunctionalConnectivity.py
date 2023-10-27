@@ -448,7 +448,7 @@ class FunctionalConnectivity:
                 }
                 p_table = p_table.append(new_row, ignore_index=True)
 
-        #p_table.to_csv("/home/acamassa/ABCD/DDC/figures/p_values_table.csv")
+        # p_table.to_csv("/home/acamassa/ABCD/DDC/figures/p_values_table.csv")
 
         plt.savefig(
             f"{self.fig_dir}{self.weights_file_name.split('*')[0]}_sig_conn_matrix.svg",
@@ -606,7 +606,7 @@ class FunctionalConnectivity:
                     plt.Rectangle((i - 0.5, i - 0.5), 1, 1, fill=True, color="gray")
                 )
             plt.clim([-np.max(diff), np.max(diff)])
-            #plt.colorbar()
+            # plt.colorbar()
             plt.yticks(np.arange(len(indices)), labels)
             plt.xticks(np.arange(len(indices)), labels, rotation="vertical")
             plt.title("Statisticaly different fc")
@@ -686,7 +686,7 @@ class FunctionalConnectivity:
             + ".svg"
         )
 
-    def plot_network_connectivity_graph_diff(self, network_name, ev):
+    def plot_network_connectivity_graph_diff(self, network_name, ev, save_as=None):
         """plot differences between ctrl and depressed network graph on brain template for a specific subnetwork"""
         indices = self.get_network_indices(network_name)
         coord_list = np.asarray(self.positions[["x", "y", "z"]])
@@ -719,11 +719,14 @@ class FunctionalConnectivity:
 
             plotting.show()
 
-            display.savefig(
-                f"{self.fig_dir}{self.weights_file_name.split('*')[0]}_diff_network_connectivity"
-                + str(network_name)
-                + ".svg"
-            )
+            if save_as is None:
+                display.savefig(
+                    f"{self.fig_dir}{self.weights_file_name.split('*')[0]}_diff_network_connectivity"
+                    + str(network_name)
+                    + ".svg"
+                )
+            else:
+                plt.savefig(f"{self.fig_dir}{save_as}")
         else:
             print("no different connections to plot")
 
