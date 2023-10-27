@@ -1,3 +1,9 @@
+"""This script plots the subnetwork matrices for the CEN, DMN, and SN for control and depressed subjects as well as the connections that are statistically different.
+
+Usage:
+    conda activate ddc-eda
+    python3 plot_subnetwork_matrix.py
+"""
 import pickle
 import sys
 

@@ -406,7 +406,7 @@ class FunctionalConnectivity:
         plt.xlabel("ROI #")
         plt.ylabel("ROI #")
 
-    def plot_significant_connections_matrix(self, colorbar=False):
+    def plot_significant_connections_matrix(self, colorbar=False, save_as=None):
         s, p = mannwhitneyu(self.control, self.depress)
         stat_diff = np.zeros(self.n_roi * self.n_roi)
         stat_diff[np.where(p < 0.05)[0]] = 1
@@ -433,11 +433,7 @@ class FunctionalConnectivity:
         plt.title("Statistically different connections")
         plt.xlabel("ROI #")
         plt.ylabel("ROI #")
-        # plt.figure(figsize=(15, 15))
 
-        # G = nx.from_numpy_array(stat_diff)
-        # plt.title("Statistically different connections")
-        # nx.draw(G, np.asarray(self.positions[["x", "y"]]), with_labels=True)
         p_table = pd.DataFrame(columns=["Areas", "p-value"])
         pv = np.reshape(p, (self.n_roi, self.n_roi))
         for i in range(self.n_roi):
@@ -450,10 +446,13 @@ class FunctionalConnectivity:
 
         # p_table.to_csv("/home/acamassa/ABCD/DDC/figures/p_values_table.csv")
 
-        plt.savefig(
-            f"{self.fig_dir}{self.weights_file_name.split('*')[0]}_sig_conn_matrix.svg",
-            format="svg",
-        )
+        if save_as is None:
+            plt.savefig(
+                f"{self.fig_dir}{self.weights_file_name.split('*')[0]}_sig_conn_matrix.svg",
+                format="svg",
+            )
+        else:
+            plt.savefig(f"{self.fig_dir}{save_as}")
 
     def plot_means_connectivity_matrices(self, colorbar=False):
         """plot mean connectivity matrix for controls and depressed"""
@@ -472,7 +471,7 @@ class FunctionalConnectivity:
 
         # plt.colorbar()
 
-    def plot_means_std_matrices(self):
+    def plot_means_std_matrices(self, save_as=None):
         avg_ddc_ctrl = self.get_mean_ddc("control")
         avg_ddc_depr = self.get_mean_ddc("depressed")
         plt.figure(figsize=(10, 10))
@@ -514,10 +513,13 @@ class FunctionalConnectivity:
         plt.xlabel("ROI #")
         plt.ylabel("ROI #")
 
-        plt.savefig(
-            f"{self.fig_dir}{self.weights_file_name.split('*')[0]}_mean_std.svg",
-            format="svg",
-        )
+        if save_as is None:
+            plt.savefig(
+                f"{self.fig_dir}{self.weights_file_name.split('*')[0]}_mean_std.svg",
+                format="svg",
+            )
+        else:
+            plt.savefig(f"{self.fig_dir}{save_as}")
 
     def plot_random_matrices(self, state):
         """plot 25 random DDC matrices"""
@@ -587,7 +589,6 @@ class FunctionalConnectivity:
                 plt.Rectangle((i - 0.5, i - 0.5), 1, 1, fill=True, color="gray")
             )
         plt.clim([cbar_min, cbar_max])
-        plt.colorbar()
         plt.yticks(np.arange(len(indices)), labels)
         plt.xticks(np.arange(len(indices)), labels, rotation="vertical")
 
