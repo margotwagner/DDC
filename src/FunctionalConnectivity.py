@@ -413,11 +413,22 @@ class FunctionalConnectivity:
 
     def plot_significant_connections_matrix(self, colorbar=True, save_as=None, bonferroni=False):
         
-        s, p = mannwhitneyu(self.control, self.depress)
+        # s, p = mannwhitneyu(self.control, self.depress)
         stat_diff = np.zeros(self.n_roi * self.n_roi)
+
+        from scipy.stats import ttest_ind
+
+        t_statistics = np.zeros((np.shape(self.control)[1],1))
+        p_values = np.zeros((np.shape(self.control)[1], 1))
+
+        for i in range(np.shape(self.control)[1]):
+                t_statistics[i], p_values[i] = ttest_ind(self.control[:, i], self.depress[:, i])
+                # t_statistics[i], p_values[i] = mannwhitneyu(c[:, i], d[:, i])
+
+        p=p_values.reshape((self.n_roi * self.n_roi))
         
         if bonferroni:
-            n_comp= len(stat_diff) * len(stat_diff)
+            n_comp= self.control.shape[1]
             adjusted_alpha = 0.05 / n_comp
             stat_diff[np.where(p < adjusted_alpha)[0]] = 1
         else:
@@ -479,6 +490,8 @@ class FunctionalConnectivity:
                 ) 
         else:
             plt.savefig(f"{self.fig_dir}{save_as}")
+    
+        return p
 
     def plot_means_connectivity_matrices(self, colorbar=False):
         """plot mean connectivity matrix for controls and depressed"""
@@ -578,23 +591,34 @@ class FunctionalConnectivity:
     def plot_network_heatmap(self, network_name, save_as=None, bonferroni=False):
         """plot binary matrix of significant connections for a specific subnetwork"""
         plt.figure(figsize=(15, 5))
+        scaled_c, scaled_d = self.standard_scaling()
 
         indices = self.get_network_indices(network_name)
         labels = self.get_network_labels(network_name)
-        network_ctrl = self.get_network_ddc(network_name, "control")
-        network_depr = self.get_network_ddc(network_name, "depressed")
 
+        network_ctrl = scaled_c[:, indices, :]
+        network_ctrl = network_ctrl[:, :, indices]
+        network_depr = scaled_d[:, indices, :]
+        network_depr = network_depr[:, :, indices]
+
+        # network_ctrl = self.get_network_ddc(network_name, "control")
+        # network_depr = self.get_network_ddc(network_name, "depressed")
+
+        
         # Get control values
-        avg_ctrl = self.get_mean_ddc("control")
+        # avg_ctrl = self.get_mean_ddc("control")
+        avg_ctrl=np.mean(scaled_c, axis=0)
         ctrl_fc = self.subset_fc(avg_ctrl, indices)
         cbar_min = min(ctrl_fc.flatten())
         cbar_max = max(ctrl_fc.flatten())
 
         # Get depressed values
-        avg_depr = self.get_mean_ddc("depressed")
+        # avg_depr = self.get_mean_ddc("depressed")
+        avg_depr=np.mean(scaled_d, axis=0)
         depr_fc = self.subset_fc(avg_depr, indices)
         cbar_min = min(cbar_min, min(depr_fc.flatten()))
         cbar_max = max(cbar_max, max(depr_fc.flatten()))
+
 
         # Plot control
         plt.subplot(131)
@@ -625,12 +649,24 @@ class FunctionalConnectivity:
         plt.xticks(np.arange(len(indices)), labels, rotation="vertical")
 
         # non parametric statistical test for independent variables
-        _, p = mannwhitneyu(network_ctrl, network_depr)
+        # _, p = mannwhitneyu(network_ctrl, network_depr)
+        from scipy.stats import ttest_ind
 
+        c=network_ctrl.reshape(len(network_ctrl),-1)
+        d=network_depr.reshape(len(network_depr),-1)
+
+        t_statistics = np.zeros((np.shape(c)[1],1))
+        p_values = np.zeros((np.shape(c)[1], 1))
+        for i in range(np.shape(c)[1]):
+                t_statistics[i], p_values[i] = ttest_ind(c[:, i], d[:, i])
+                # t_statistics[i], p_values[i] = mannwhitneyu(c[:, i], d[:, i])
+
+        p=p_values.reshape(np.shape(network_ctrl)[1:])
+        # _, p = ttest_ind(network_ctrl, network_depr)
         diff = depr_fc - ctrl_fc
         
         if bonferroni:
-            n_comp= len(diff) * len(diff)
+            n_comp= network_ctrl.shape[1]
             adjusted_alpha = 0.05 / n_comp
             diff[np.where(p > adjusted_alpha)] = 0
         else:
@@ -639,16 +675,21 @@ class FunctionalConnectivity:
        
 
         # Plot if there are significant differences
-#         if sum(sum(diff)) > 0:
+         #if sum(sum(diff)) > 0:
         plt.subplot(133)
         im = plt.imshow(diff, cmap="RdBu_r")
-        plt.clim([-np.max(diff), np.max(diff)])
+        if network_name=='CEN':
+            plt.clim([-0.0002, 0.0002])
+        else:
+            plt.clim([-np.max(diff), np.max(diff)])
+
         plt.colorbar()
+
         for i in range(len(diff)):
             im.axes.add_patch(
                 plt.Rectangle((i - 0.5, i - 0.5), 1, 1, fill=True, color="gray")
             )
-        plt.clim([-np.max(diff), np.max(diff)])
+        
         # plt.colorbar()
         plt.yticks(np.arange(len(indices)), labels)
         plt.xticks(np.arange(len(indices)), labels, rotation="vertical")
@@ -673,6 +714,7 @@ class FunctionalConnectivity:
                     + ".svg",
                     format="svg",
                 )
+        # return diff 
 
     def plot_network_significant_connections_graph(self, network_name):
         """plot network graph only significantly different connections for a specific subnetwork"""
@@ -739,14 +781,20 @@ class FunctionalConnectivity:
             + ".svg"
         )
 
-    def plot_network_connectivity_graph_diff(self, network_name, ev, save_as=None):
+    def plot_network_connectivity_graph_diff(self, network_name, ev, save_as=None, bonferroni=False):
         """plot differences between ctrl and depressed network graph on brain template for a specific subnetwork"""
-        
-        coord_list = np.asarray(self.positions[["x", "y", "z"]])
+        scaled_c, scaled_d = self.standard_scaling()
+
         indices = self.get_network_indices(network_name)
         labels = self.get_network_labels(network_name)
-        network_ctrl = self.get_network_ddc(network_name, "control")
-        network_depr = self.get_network_ddc(network_name, "depressed")
+
+        network_ctrl = scaled_c[:, indices, :]
+        network_ctrl = network_ctrl[:, :, indices]
+        network_depr = scaled_d[:, indices, :]
+        network_depr = network_depr[:, :, indices]
+
+        coord_list = np.asarray(self.positions[["x", "y", "z"]])
+
 
         # Get control values
         avg_ctrl = self.get_mean_ddc("control")
@@ -761,13 +809,21 @@ class FunctionalConnectivity:
         cbar_max = max(cbar_max, max(depr_fc.flatten()))
 
         # non parametric statistical test for independent variables
-        _, p = mannwhitneyu(network_ctrl, network_depr)
+        # _, p = mannwhitneyu(network_ctrl, network_depr)
 
+
+        from scipy.stats import ttest_ind
+        _, p = ttest_ind(network_ctrl, network_depr)
         diff = depr_fc - ctrl_fc
+        
+        if bonferroni:
+            n_comp= network_ctrl.shape[1]
+            adjusted_alpha = 0.05 / n_comp
+            diff[np.where(p > adjusted_alpha)] = 0
+        else:
+            diff[np.where(p > 0.05)] = 0
 
 
-
-        diff[np.where(p > 0.05)] = 0
         
 #         if sum(sum(diff)) > 0:
 #             if ev == []:
@@ -895,7 +951,7 @@ class FunctionalConnectivity:
             
         hist_data=[scaled_c[:,x,y],scaled_d[:,x,y]]
         group_labels = ['Control', 'Depressed']
-
+        plt.figure(figsize=(10,10))
         fig = ff.create_distplot(hist_data, group_labels, show_hist=True)
         # Add title
         title = f"{self.all_ROIs[x]}:{self.all_ROIs[y]}"
