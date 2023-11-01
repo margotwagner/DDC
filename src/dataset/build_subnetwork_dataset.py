@@ -39,10 +39,13 @@ def main(subnetwork):
     depr = fc.get_flat_network_ddc(subnetwork, "depr")
     data = np.concatenate((ctrl, depr), axis=0)
     data = StandardScaler().fit_transform(data)
-    print(f"Data shape: {data.shape}")
 
     # Organized dataset
     data = pd.DataFrame(data, index=fc.control_subj_ids + fc.depress_subj_ids)
+    data["label"] = [0] * len(fc.control_subj_ids) + [1] * len(
+        fc.depress_subj_ids
+    )
+    print(f"Data shape: {data.shape}")
 
     data.to_csv(f"../../data/processed/ddc-{subnetwork.lower()}.csv")
 
@@ -52,4 +55,4 @@ def main(subnetwork):
 
 
 if __name__ == "__main__":
-    main("SN")
+    main("DMN") # options are DMN, CEN, SN
