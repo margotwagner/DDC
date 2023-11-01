@@ -139,9 +139,7 @@ class FunctionalConnectivity:
                 "/nadata/cnl/abcd/data/imaging/fmri/rsfmri/interim/segmented/baseline/downloads/sub-NDARINV04GAB2AA/ROIs_centroid_coordinates.csv"
             )[30:]
 
-        # builds the dataset
-        dataset = self.build_dataset()
-        # assign the output to the variables
+        # builds the dataset and assign the output to the variables
         (
             self.no_weights,
             self.missing_rois,
@@ -153,7 +151,10 @@ class FunctionalConnectivity:
             self.depress_weights_vec,
             self.control,
             self.depress,
-        ) = dataset
+            self.control_subj_ids,
+            self.depress_subj_ids,
+            self.labels
+        ) = self.build_dataset()
 
     def build_dataset(self, is_cov=False):
         """Builds the dataset."""
@@ -165,8 +166,11 @@ class FunctionalConnectivity:
         depress_weights = np.zeros((self.n2, self.n_roi, self.n_roi))
         control_weights_vec = np.zeros((self.n1, self.n_roi * self.n_roi))
         depress_weights_vec = np.zeros((self.n2, self.n_roi * self.n_roi))
-        j = 0
-        k = 0
+        ctrl_subj_labels = []
+        depr_subj_labels = []
+        dataset_labels = []
+        n_ctrl_files = 0
+        n_depr_files = 0
 
         for i in range(len(self.labels)):
             # subject ID
@@ -184,45 +188,49 @@ class FunctionalConnectivity:
                         d = np.asarray(pd.read_csv(f, header=None))
                         if not len(d) < self.n_roi:
                             if sum(sum(np.isnan(d))) < 1:
-                                control_weights[j, :, :] = np.asarray(
+                                control_weights[n_ctrl_files, :, :] = np.asarray(
                                     pd.read_csv(f, header=None)
                                 )
 
                                 # Threshold binarization (to be replaced by bootstrap) and reshape
-                                control_weights_vec[j, :] = np.reshape(
-                                    (abs(control_weights[j, :, :]) > self.thrs) * 1,
+                                control_weights_vec[n_ctrl_files, :] = np.reshape(
+                                    (abs(control_weights[n_ctrl_files, :, :]) > self.thrs) * 1,
                                     (1, self.n_roi * self.n_roi),
                                 )
 
                                 ctrl_files.append(f)
 
-                                j += 1
+                                n_ctrl_files += 1
+
+                                ctrl_subj_labels.append(subj.split("-")[1])
 
                     # Depressed subjects
                     else:
                         d = np.asarray(pd.read_csv(f, header=None))
                         if not len(d) < self.n_roi:
                             if sum(sum(np.isnan(d))) < 1:
-                                depress_weights[k, :, :] = np.asarray(
+                                depress_weights[n_depr_files, :, :] = np.asarray(
                                     pd.read_csv(f, header=None)
                                 )
                                 # Threshold binarization (to be replaced by bootstrap) and reshape
-                                depress_weights_vec[k, :] = np.reshape(
-                                    (abs(depress_weights[k, :, :]) > self.thrs) * 1,
+                                depress_weights_vec[n_depr_files, :] = np.reshape(
+                                    (abs(depress_weights[n_depr_files, :, :]) > self.thrs) * 1,
                                     (1, self.n_roi * self.n_roi),
                                 )
-
-                                k += 1
-
+                                
                                 depr_files.append(f)
+
+                                n_depr_files += 1
+
+                                depr_subj_labels.append(subj.split("-")[1])
 
                 else:
                     no_weights.append(f)
 
-        control_weights = control_weights[:j, :, :]
-        depress_weights = depress_weights[:k, :, :]
-        control_weights_vec = control_weights_vec[:j, :]
-        depress_weights_vec = depress_weights_vec[:k, :]
+        control_weights = control_weights[:n_ctrl_files, :, :]
+        depress_weights = depress_weights[:n_depr_files, :, :]
+        control_weights_vec = control_weights_vec[:n_ctrl_files, :]
+        depress_weights_vec = depress_weights_vec[:n_depr_files, :]
         control = np.reshape(
             control_weights, (len(control_weights), self.n_roi * self.n_roi)
         )
@@ -241,10 +249,12 @@ class FunctionalConnectivity:
             depress_weights_vec,
             control,
             depress,
+            ctrl_subj_labels,
+            depr_subj_labels,
+            dataset_labels
         )
-    
+
     def scale_inter_sub(self):
-        
         return scaled_derp, scaled_controls
     
     def get_binary_connections_percentage_control(self):
@@ -310,6 +320,14 @@ class FunctionalConnectivity:
         network_DDC = network_DDC[:, :, indices]
 
         return network_DDC
+    
+    def get_flat_network_ddc(self, network_name, state):
+        network_DDC = self.get_network_ddc(network_name, state)
+        
+        network_DDC = np.reshape(network_DDC, (len(network_DDC), len(network_DDC[0])*len(network_DDC[0])))
+
+        return network_DDC
+    
 
     def plot_binary_weights(self, state, plot=plt.figure(), colorbar=True):
         """plot the binary connectivity for all subjects in vector form per state"""
