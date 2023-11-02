@@ -635,14 +635,14 @@ class FunctionalConnectivity:
 
         # Get control values
         # avg_ctrl = self.get_mean_ddc("control")
-        avg_ctrl = np.mean(scaled_c, axis=0)
+        avg_ctrl = np.mean(self.control_weights, axis=0)
         ctrl_fc = self.subset_fc(avg_ctrl, indices)
         cbar_min = min(ctrl_fc.flatten())
         cbar_max = max(ctrl_fc.flatten())
 
         # Get depressed values
         # avg_depr = self.get_mean_ddc("depressed")
-        avg_depr = np.mean(scaled_d, axis=0)
+        avg_depr = np.mean(self.depress_weights, axis=0)
         depr_fc = self.subset_fc(avg_depr, indices)
         cbar_min = min(cbar_min, min(depr_fc.flatten()))
         cbar_max = max(cbar_max, max(depr_fc.flatten()))
@@ -703,10 +703,10 @@ class FunctionalConnectivity:
         # if sum(sum(diff)) > 0:
         plt.subplot(133)
         im = plt.imshow(diff, cmap="RdBu_r")
-        if network_name == "CEN":
-            plt.clim([-0.0002, 0.0002])
-        else:
-            plt.clim([-np.max(diff), np.max(diff)])
+        # if network_name == "CEN":
+        #     plt.clim([-0.0002, 0.0002])
+        # else:
+        plt.clim([-np.max(diff), np.max(diff)])
 
         plt.colorbar()
 
@@ -714,11 +714,25 @@ class FunctionalConnectivity:
             im.axes.add_patch(
                 plt.Rectangle((i - 0.5, i - 0.5), 1, 1, fill=True, color="gray")
             )
+                        
+        for i in range(len(ctrl_fc)):
+            for j in range(len(ctrl_fc)):
+                if diff[i,j]!=0:
+                    if i!=j:
+                        if np.sign(ctrl_fc[i,j]) != np.sign(depr_fc[i,j]):
+                            plt.scatter(j, i, marker='*', color='k', s=50) 
+                            # plt.xlim([0,len(ctrl_fc)])
+                            # plt.ylim([0,len(ctrl_fc)])
+
+
+
 
         # plt.colorbar()
         plt.yticks(np.arange(len(indices)), labels)
         plt.xticks(np.arange(len(indices)), labels, rotation="vertical")
         plt.title("Statisticaly different fc")
+
+
 
         if save_as is not None:
             plt.savefig(f"{self.fig_dir}{save_as}")
