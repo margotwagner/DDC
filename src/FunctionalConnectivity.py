@@ -429,11 +429,11 @@ class FunctionalConnectivity:
         """plot difference between mean connectivity matrix per state."""
         avg_ctrl = self.get_mean_ddc("control")
         avg_depr = self.get_mean_ddc("depressed")
-        avg_diff = avg_depr - avg_ctrl
+        avg_diff = abs(avg_depr) - abs(avg_ctrl)
         limit = max(abs(np.min(avg_diff)), abs(np.max(avg_diff)))
         plt.imshow(avg_diff, vmin=-limit, vmax=limit, cmap="RdBu_r")
         plt.colorbar()
-        # plt.clim([-0.01, 0.01])
+        # plt.clim([-limit, limit])
         plt.title("Difference")
         plt.xlabel("ROI #")
         plt.ylabel("ROI #")
@@ -467,8 +467,8 @@ class FunctionalConnectivity:
         stat_diff = np.reshape(stat_diff, (self.n_roi, self.n_roi))
         a = self.get_mean_ddc("control")
         b = self.get_mean_ddc("depressed")
-        diff = b - a
-        # diff = abs(b) - abs(a)
+        # diff = b - a
+        diff = abs(b) - abs(a)
         diff[np.where(stat_diff == 0)] = 0
 
         plt.figure(figsize=(10, 5))
@@ -485,7 +485,7 @@ class FunctionalConnectivity:
             im.axes.add_patch(
                 plt.Rectangle((i - 0.5, i - 0.5), 1, 1, fill=True, color="gray")
             )
-        # plt.clim([-np.max(diff), np.max(diff)])
+        plt.clim([-np.max(diff), np.max(diff)])
         plt.colorbar()
         plt.title("Statistically different connections")
         plt.xlabel("ROI #")
@@ -690,7 +690,8 @@ class FunctionalConnectivity:
 
         p = p_values.reshape(np.shape(network_ctrl)[1:])
         # _, p = ttest_ind(network_ctrl, network_depr)
-        diff = depr_fc - ctrl_fc
+        # diff = depr_fc - ctrl_fc
+        diff= abs(depr_fc) - abs(ctrl_fc)
 
         if bonferroni:
             n_comp = network_ctrl.shape[1]
@@ -852,7 +853,7 @@ class FunctionalConnectivity:
         from scipy.stats import ttest_ind
 
         _, p = ttest_ind(network_ctrl, network_depr)
-        diff = depr_fc - ctrl_fc
+        diff = abs(depr_fc) - abs(ctrl_fc)
 
         if bonferroni:
             n_comp = network_ctrl.shape[1]
@@ -935,7 +936,7 @@ class FunctionalConnectivity:
         stat_diff = np.reshape(stat_diff, (self.n_roi, self.n_roi))
         a = self.get_mean_ddc("control")
         b = self.get_mean_ddc("depressed")
-        diff = abs(b) - abs(a)
+        diff= abs(b) - abs(a)
         diff[np.where(stat_diff == 0)] = 0
 
         coord_list = np.asarray(self.positions[["x", "y", "z"]])
