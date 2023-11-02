@@ -510,7 +510,7 @@ class FunctionalConnectivity:
 
         # plt.colorbar()
 
-    def plot_means_std_matrices(self, save_as=None):
+    def plot_means_std_matrices(self, save_as=None,cmap="Reds"):
         avg_ddc_ctrl = self.get_mean_ddc("control")
         avg_ddc_depr = self.get_mean_ddc("depressed")
         plt.figure(figsize=(10, 10))
@@ -540,7 +540,7 @@ class FunctionalConnectivity:
 
         plt.subplot(223)
         std_ddc_ctrl = self.get_std_ddc("control")
-        im = plt.imshow(std_ddc_ctrl)
+        im = plt.imshow(std_ddc_ctrl, cmap=cmap)
         plt.colorbar()
         plt.clim([0, 10000])
         plt.title("std DDC control")
@@ -548,7 +548,7 @@ class FunctionalConnectivity:
         plt.ylabel("ROI #")
         plt.subplot(224)
         std_ddc_depr = self.get_std_ddc("depressed")
-        im = plt.imshow(std_ddc_depr)
+        im = plt.imshow(std_ddc_depr, cmap=cmap)
         plt.colorbar()
         plt.clim([0, 10000])
         plt.title("std DDC depr")
