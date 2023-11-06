@@ -591,8 +591,8 @@ class FunctionalConnectivity:
             title="Depressed-Controls",
         )
     
-        plt.show()
         plt.savefig("/home/acamassa/ABCD/DDC_figures/Depr-Controls_FC_map.svg")
+        plt.show()
 
         
 
