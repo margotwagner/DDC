@@ -571,6 +571,11 @@ class FunctionalConnectivity:
         plt.bar(np.arange(len(diff[1:])),sum_diff[indices][1:],color=colors)
         plt.xticks(np.arange(len(new_labels[1:])), new_labels[1:], rotation="vertical")
 
+        plt.savefig(
+            f"{self.fig_dir}{self.weights_file_name.split('*')[0]}_barplot.svg",
+            format="svg",
+        )
+
         # # plot on the brain
         coord_list = np.asarray(self.positions[["x", "y", "z"]])[3:,:]
 
@@ -583,11 +588,12 @@ class FunctionalConnectivity:
             # node_vmin=-2e-18,
             # node_vmax=2e-18,
             node_size=sum_diff/10,
-            title="Controls average activation per ROI",
+            title="Depressed-Controls",
         )
     
         plt.show()
-        return sum_diff[indices], indices
+        plt.savefig("/home/acamassa/ABCD/DDC_figures/Depr-Controls_FC_map.svg")
+
         
 
          
