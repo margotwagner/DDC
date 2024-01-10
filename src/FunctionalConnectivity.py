@@ -450,6 +450,7 @@ class FunctionalConnectivity:
             format="svg",
         )
 
+
     def plot_mean_weights(self, state, plot=plt.figure(), colorbar=True):
         """plot mean connectivity matrix per state"""
         avg = self.get_mean_ddc(state)
@@ -466,11 +467,11 @@ class FunctionalConnectivity:
         """plot difference between mean connectivity matrix per state."""
         avg_ctrl = self.get_mean_ddc("control")
         avg_depr = self.get_mean_ddc("depressed")
-        avg_diff = avg_depr - avg_ctrl
+        avg_diff = abs(avg_depr) - abs(avg_ctrl)
         limit = max(abs(np.min(avg_diff)), abs(np.max(avg_diff)))
         plt.imshow(avg_diff, vmin=-limit, vmax=limit, cmap="RdBu_r")
         plt.colorbar()
-        # plt.clim([-0.01, 0.01])
+        # plt.clim([-limit, limit])
         plt.title("Difference")
         plt.xlabel("ROI #")
         plt.ylabel("ROI #")
@@ -504,8 +505,8 @@ class FunctionalConnectivity:
         stat_diff = np.reshape(stat_diff, (self.n_roi, self.n_roi))
         a = self.get_mean_ddc("control")
         b = self.get_mean_ddc("depressed")
-        diff = b - a
-        # diff = abs(b) - abs(a)
+        # diff = b - a
+        diff = abs(b) - abs(a)
         diff[np.where(stat_diff == 0)] = 0
 
         plt.figure(figsize=(10, 5))
@@ -522,7 +523,7 @@ class FunctionalConnectivity:
             im.axes.add_patch(
                 plt.Rectangle((i - 0.5, i - 0.5), 1, 1, fill=True, color="gray")
             )
-        # plt.clim([-np.max(diff), np.max(diff)])
+        plt.clim([-np.max(diff), np.max(diff)])
         plt.colorbar()
         plt.title("Statistically different connections")
         plt.xlabel("ROI #")
@@ -558,6 +559,81 @@ class FunctionalConnectivity:
             plt.savefig(f"{self.fig_dir}{save_as}")
 
         return p
+    
+    def plot_significant_connections_bar(self, bonferroni=False):
+
+        stat_diff = np.zeros(self.n_roi * self.n_roi)
+
+        from scipy.stats import ttest_ind
+
+        t_statistics = np.zeros((np.shape(self.control)[1], 1))
+        p_values = np.zeros((np.shape(self.control)[1], 1))
+
+        for i in range(np.shape(self.control)[1]):
+            t_statistics[i], p_values[i] = ttest_ind(
+                self.control[:, i], self.depress[:, i]
+            )
+            # t_statistics[i], p_values[i] = mannwhitneyu(c[:, i], d[:, i])
+
+        p = p_values.reshape((self.n_roi * self.n_roi))
+
+        if bonferroni:
+            n_comp = self.control.shape[1]
+            adjusted_alpha = 0.05 / n_comp
+            stat_diff[np.where(p < adjusted_alpha)[0]] = 1
+        else:
+            stat_diff[np.where(p < 0.05)[0]] = 1
+
+        stat_diff = np.reshape(stat_diff, (self.n_roi, self.n_roi))
+        a = self.get_mean_ddc("control")
+        b = self.get_mean_ddc("depressed")
+        # diff = b - a
+
+        from operator import itemgetter
+
+        diff = abs(b) - abs(a)
+        diff[np.where(stat_diff == 0)] = 0
+        diff=diff[3:,3:]
+        sum_diff = diff.sum(axis=0)
+
+        indices = np.argsort(sum_diff)[::-1]
+        new_labels=[]
+        labels=self.all_ROIs[3:]    
+
+        for i in indices:
+            new_labels.append(labels[i])
+
+        fig=plt.figure(figsize=(20,5))
+        colors = plt.cm.Reds_r(np.linspace(0, 1, len(diff)))
+        plt.bar(np.arange(len(diff[1:])),sum_diff[indices][1:],color=colors)
+        plt.xticks(np.arange(len(new_labels[1:])), new_labels[1:], rotation="vertical")
+
+        plt.savefig(
+            f"{self.fig_dir}{self.weights_file_name.split('*')[0]}_barplot.svg",
+            format="svg",
+        )
+
+        # # plot on the brain
+        coord_list = np.asarray(self.positions[["x", "y", "z"]])[3:,:]
+
+        fig=plt.figure(figsize=(15,7))
+        plotting.plot_markers(
+            sum_diff,
+            coord_list,
+            node_cmap="Reds",
+            figure=fig,
+            # node_vmin=-2e-18,
+            # node_vmax=2e-18,
+            node_size=sum_diff/10,
+            title="Depressed-Controls",
+        )
+    
+        plt.savefig("/home/acamassa/ABCD/DDC_figures/Depr-Controls_FC_map.svg")
+        plt.show()
+
+        
+
+         
 
     def plot_means_connectivity_matrices(self, colorbar=False):
         """plot mean connectivity matrix for controls and depressed"""
@@ -727,7 +803,8 @@ class FunctionalConnectivity:
 
         p = p_values.reshape(np.shape(network_ctrl)[1:])
         # _, p = ttest_ind(network_ctrl, network_depr)
-        diff = depr_fc - ctrl_fc
+        # diff = depr_fc - ctrl_fc
+        diff= abs(depr_fc) - abs(ctrl_fc)
 
         if bonferroni:
             n_comp = network_ctrl.shape[1]
@@ -889,7 +966,7 @@ class FunctionalConnectivity:
         from scipy.stats import ttest_ind
 
         _, p = ttest_ind(network_ctrl, network_depr)
-        diff = depr_fc - ctrl_fc
+        diff = abs(depr_fc) - abs(ctrl_fc)
 
         if bonferroni:
             n_comp = network_ctrl.shape[1]
@@ -972,7 +1049,7 @@ class FunctionalConnectivity:
         stat_diff = np.reshape(stat_diff, (self.n_roi, self.n_roi))
         a = self.get_mean_ddc("control")
         b = self.get_mean_ddc("depressed")
-        diff = abs(b) - abs(a)
+        diff= abs(b) - abs(a)
         diff[np.where(stat_diff == 0)] = 0
 
         coord_list = np.asarray(self.positions[["x", "y", "z"]])
