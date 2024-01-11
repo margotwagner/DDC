@@ -106,6 +106,43 @@ class FunctionalConnectivity:
             "l-Ins",
         ]
 
+        self.left_long = [
+            "l-bankssts",
+            "l-caudalanteriorcingulate",
+            "l-caudalmiddlefrontal",
+            "l-cuneus",
+            "l-entorhinal",
+            "l-fusiform",
+            "l-inferiorparietal",
+            "l-inferiortemporal",
+            "l-isthmuscingulate",
+            "l-lateraloccipital",
+            "l-lateralorbitofrontal",
+            "l-lingual",
+            "l-medialorbitofrontal",
+            "l-middletemporal",
+            "l-parahippocampal",
+            "l-paracentral",
+            "l-parsopercularis",
+            "l-parsorbitalis",
+            "l-parstriangularis",
+            "l-pericalcarine",
+            "l-postcentral",
+            "l-posteriorcingulate",
+            "l-precentral",
+            "l-precuneus",
+            "l-rostralanteriorcingulate",
+            "l-rostralmiddlefrontal",
+            "l-superiorfrontal",
+            "l-superiorparietal",
+            "l-superiortemporal",
+            "l-supramarginal",
+            "l-frontalpole",
+            "l-temporalpole",
+            "l-transversetemporal",
+            "l-insula",
+        ]
+
         self.right = ["r" + label[1:] for label in self.left]
 
         # Concatenate the two lists
@@ -504,7 +541,7 @@ class FunctionalConnectivity:
 
         p_table = pd.DataFrame(p_table_list)
         p_table.to_csv(
-            "/home/acamassa/ABCD/DDC_figures/p_values_table.csv", index=False
+            f"{self.fig_dir}p_values_table.csv", index=False
         )
 
         if save_as is None:
