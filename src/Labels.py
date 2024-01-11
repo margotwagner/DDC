@@ -15,8 +15,9 @@ class Labels:
         ).iloc[1:, :]
 
         # just take baseline data for now
-        baseline = raw_inst_df[raw_inst_df["eventname"] == "baseline_year_1_arm_1"]
-
+        # baseline = raw_inst_df[raw_inst_df["eventname"] == "baseline_year_1_arm_1"]
+        baseline = raw_inst_df[raw_inst_df["eventname"] == "2_year_follow_up_y_arm_1"]
+        
         # get all feats
         feats = baseline.keys().tolist()[9:-2]
 
@@ -82,4 +83,5 @@ class Labels:
         return df
 
     def save_df(self):
-        self.df.to_csv(self.save_dir + "baseline-bin-healthy-depress.csv", sep=",")
+        # self.df.to_csv(self.save_dir + "baseline-bin-healthy-depress.csv", sep=",")
+        self.df.to_csv(self.save_dir + "year2-bin-healthy-depress.csv", sep=",")
