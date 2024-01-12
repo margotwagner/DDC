@@ -106,43 +106,6 @@ class FunctionalConnectivity:
             "l-Ins",
         ]
 
-        self.left_long = [
-            "l-bankssts",
-            "l-caudalanteriorcingulate",
-            "l-caudalmiddlefrontal",
-            "l-cuneus",
-            "l-entorhinal",
-            "l-fusiform",
-            "l-inferiorparietal",
-            "l-inferiortemporal",
-            "l-isthmuscingulate",
-            "l-lateraloccipital",
-            "l-lateralorbitofrontal",
-            "l-lingual",
-            "l-medialorbitofrontal",
-            "l-middletemporal",
-            "l-parahippocampal",
-            "l-paracentral",
-            "l-parsopercularis",
-            "l-parsorbitalis",
-            "l-parstriangularis",
-            "l-pericalcarine",
-            "l-postcentral",
-            "l-posteriorcingulate",
-            "l-precentral",
-            "l-precuneus",
-            "l-rostralanteriorcingulate",
-            "l-rostralmiddlefrontal",
-            "l-superiorfrontal",
-            "l-superiorparietal",
-            "l-superiortemporal",
-            "l-supramarginal",
-            "l-frontalpole",
-            "l-temporalpole",
-            "l-transversetemporal",
-            "l-insula",
-        ]
-
         self.right = ["r" + label[1:] for label in self.left]
 
         # Concatenate the two lists
@@ -299,8 +262,6 @@ class FunctionalConnectivity:
             dataset_labels,
         )
 
-#     def scale_inter_sub(self):
-#         return scaled_derp, scaled_controls
 
     def get_binary_connections_percentage_control(self):
         sig_conn = np.reshape(
@@ -541,7 +502,7 @@ class FunctionalConnectivity:
 
         p_table = pd.DataFrame(p_table_list)
         p_table.to_csv(
-            f"{self.fig_dir}p_values_table.csv", index=False
+            "/home/acamassa/ABCD/DDC_figures/p_values_table.csv", index=False
         )
 
         if save_as is None:
@@ -1140,5 +1101,80 @@ class FunctionalConnectivity:
         plt.annotate(f'p-value: {p_value:.4f}', xy=(0.5, 0.5), xycoords='axes fraction', ha='center', va='center',
              bbox=dict(boxstyle='round', facecolor='white', alpha=0.7))
 
+
+    
+
+    def build_dataset_handedness(self, labels, is_cov=False):
+        """Builds the dataset."""
+        
+        df = pd.read_csv('/cnl/abcd/data/tabular/raw/abcd_ehis01.txt', sep='\t')
+        df=df[['subjectkey','ehi_y_ss_scoreb']]
+        hand=[]
+        for i in range(len(labels)):
+            # subject ID
+            lab=labels.index.values[i]
+            l='NDAR_'+lab.split('NDAR')[-1]
+            if df[df['subjectkey']==l]['ehi_y_ss_scoreb'].values=='1':
+                hand.append('R')
+            elif df[df['subjectkey']==l]['ehi_y_ss_scoreb'].values=='2':
+                hand.append('L')
+            elif df[df['subjectkey']==l]['ehi_y_ss_scoreb'].values=='3':
+                hand.append('M')
+        l_hand=labels
+        l_hand['hand']=hand
+        
+        control_L=[]
+        control_R=[]
+        depress_L=[]
+        depress_R=[]
+        
+
+        for i in range(len(l_hand)):
+            # subject ID
+            subj = "sub-" + l_hand.index.values[i]
+            print(subj)
+            # build DDC files list
+            files = glob.glob(
+                self.DDC_path + subj + "/single_sessions/" + self.weights_file_name
+            )
+            print(files)
+
+            for f in files:
+                print(f)
+                if os.path.exists(f):
+                    # Control subjects
+                    if l_hand.values[i,0] == 0:
+                        print('control subject')
+                        d = np.asarray(pd.read_csv(f, header=None))
+                        if not len(d) < 98:
+                            if sum(sum(np.isnan(d))) < 1:
+                                if l_hand.values[i,1] == 'R':
+                                    print('right')
+                                    control_R.append(d)
+                                elif l_hand.values[i,1] == 'L':
+                                    print('L')
+                                    control_L.append(d)
+
+
+
+                    # Depressed subjects
+                    else:
+                        d = np.asarray(pd.read_csv(f, header=None))
+                        if not len(d) < 98:
+                            if sum(sum(np.isnan(d))) < 1:
+                                if l_hand.values[i,1] == 'R':
+                                    depress_R.append(np.asarray(
+                                        pd.read_csv(f, header=None)
+                                    ))
+                                elif l_hand.values[i,1] == 'L':
+                                    depress_L.append(np.asarray(pd.read_csv(f, header=None)))
+
+
+        control_R=np.asarray(control_R)
+        control_L=np.asarray(control_L)
+        depress_R=np.asarray(depress_R)
+        depress_L=np.asarray(depress_L)
+        
+        return control_R, control_L, depress_R, depress_L
 
 
