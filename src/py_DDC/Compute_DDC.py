@@ -137,7 +137,10 @@ def compute_ddc(ts, TR, d):
 
     if matrix_rank(Cov) < len(Cov):
         print("Cov is rank deficient!")
-
+        qc_flag=1
+    else:
+        qc_flag=0
+    
     if d == 2:  # using dCov2
         DDC = dCov2 @ Precision  # Delta L
         nl_DDC = dCov2 @ B  # Delta ReLu
@@ -173,7 +176,7 @@ def compute_ddc(ts, TR, d):
             coef = ridgereg.coef_
             Reg_DDC[n, :] = coef.T
 
-    return Cov, DDC, Reg_DDC, nl_DDC
+    return Cov, DDC, Reg_DDC, nl_DDC, qc_flag
 
 
 def compute_fddc(ts, TR, d):

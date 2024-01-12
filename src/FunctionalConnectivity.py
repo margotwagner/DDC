@@ -106,43 +106,6 @@ class FunctionalConnectivity:
             "l-Ins",
         ]
 
-        self.left_long = [
-            "l-bankssts",
-            "l-caudalanteriorcingulate",
-            "l-caudalmiddlefrontal",
-            "l-cuneus",
-            "l-entorhinal",
-            "l-fusiform",
-            "l-inferiorparietal",
-            "l-inferiortemporal",
-            "l-isthmuscingulate",
-            "l-lateraloccipital",
-            "l-lateralorbitofrontal",
-            "l-lingual",
-            "l-medialorbitofrontal",
-            "l-middletemporal",
-            "l-parahippocampal",
-            "l-paracentral",
-            "l-parsopercularis",
-            "l-parsorbitalis",
-            "l-parstriangularis",
-            "l-pericalcarine",
-            "l-postcentral",
-            "l-posteriorcingulate",
-            "l-precentral",
-            "l-precuneus",
-            "l-rostralanteriorcingulate",
-            "l-rostralmiddlefrontal",
-            "l-superiorfrontal",
-            "l-superiorparietal",
-            "l-superiortemporal",
-            "l-supramarginal",
-            "l-frontalpole",
-            "l-temporalpole",
-            "l-transversetemporal",
-            "l-insula",
-        ]
-
         self.right = ["r" + label[1:] for label in self.left]
 
         # Concatenate the two lists
@@ -299,8 +262,6 @@ class FunctionalConnectivity:
             dataset_labels,
         )
 
-    def scale_inter_sub(self):
-        return scaled_derp, scaled_controls
 
     def get_binary_connections_percentage_control(self):
         sig_conn = np.reshape(
@@ -541,7 +502,7 @@ class FunctionalConnectivity:
 
         p_table = pd.DataFrame(p_table_list)
         p_table.to_csv(
-            f"{self.fig_dir}p_values_table.csv", index=False
+            "/home/acamassa/ABCD/DDC_figures/p_values_table.csv", index=False
         )
 
         if save_as is None:
@@ -662,7 +623,15 @@ class FunctionalConnectivity:
             im.axes.add_patch(
                 plt.Rectangle((i - 0.5, i - 0.5), 1, 1, fill=True, color="gray")
             )
-        plt.clim([-400, 400])
+        # Get control values
+        cbar_min = min(avg_ddc_ctrl.flatten())
+        cbar_max = max(avg_ddc_ctrl.flatten())
+
+        # Get depressed values
+        cbar_min = min(cbar_min, min(avg_ddc_depr.flatten()))
+        cbar_max = max(cbar_max, max(avg_ddc_depr.flatten()))
+        plt.clim([cbar_min, cbar_max])
+        # plt.clim([-400, 400])
         plt.colorbar()
         plt.title("avg DDC control")
         plt.xlabel("ROI #")
@@ -674,7 +643,7 @@ class FunctionalConnectivity:
             im.axes.add_patch(
                 plt.Rectangle((i - 0.5, i - 0.5), 1, 1, fill=True, color="gray")
             )
-        plt.clim([-400, 400])
+        plt.clim([cbar_min, cbar_max])
         plt.title("avg DDC depr")
         plt.xlabel("ROI #")
         plt.ylabel("ROI #")
@@ -684,15 +653,26 @@ class FunctionalConnectivity:
         std_ddc_ctrl = self.get_std_ddc("control")
         im = plt.imshow(std_ddc_ctrl, cmap=cmap)
         plt.colorbar()
-        plt.clim([0, 10000])
+        # plt.clim([0, 10000])
         plt.title("std DDC control")
         plt.xlabel("ROI #")
         plt.ylabel("ROI #")
-        plt.subplot(224)
+        
         std_ddc_depr = self.get_std_ddc("depressed")
+
+        # Get control values
+        cbar_min = min(std_ddc_ctrl.flatten())
+        cbar_max = max(std_ddc_ctrl.flatten())
+        # Get depressed values
+        cbar_min = min(cbar_min, min(std_ddc_depr.flatten()))
+        cbar_max = max(cbar_max, max(std_ddc_depr.flatten()))
+        plt.clim([cbar_min, cbar_max])
+
+        plt.subplot(224)
         im = plt.imshow(std_ddc_depr, cmap=cmap)
         plt.colorbar()
-        plt.clim([0, 10000])
+        plt.clim([cbar_min, cbar_max])
+        # plt.clim([0, 10000])
         plt.title("std DDC depr")
         plt.xlabel("ROI #")
         plt.ylabel("ROI #")
@@ -1091,30 +1071,110 @@ class FunctionalConnectivity:
 
         return scaled_c, scaled_d
 
-    def plot_connection_probDistr(self, x=None, y=None, save_as=None):
+
+
+    def plot_connection_probDistr(self, x=None, y=None, save_as=None, scaling=0):
         "plotting the distribution for the selected connection"
         "x and y can be int = index of the desired ROIs or str + name of the desired ROIs to compare"
-        import plotly.figure_factory as ff
+        import seaborn as sns
+        from scipy.stats import ttest_ind
 
-        scaled_c, scaled_d = self.standard_scaling()
+        if scaling:
+            scaled_c, scaled_d = self.standard_scaling()
+        else:
+            scaled_c=self.control_weights
+            scaled_d=self.depress_weights
 
         if isinstance(x, str):
             x = self.all_ROIs.index(x)
             y = self.all_ROIs.index(y)
+            
+        # Create histograms
+        plt.figure(figsize=(12, 6))
 
-        hist_data = [scaled_c[:, x, y], scaled_d[:, x, y]]
-        group_labels = ["Control", "Depressed"]
-        plt.figure(figsize=(10, 10))
-        fig = ff.create_distplot(hist_data, group_labels, show_hist=True)
-        # Add title
-        title = f"{self.all_ROIs[x]}:{self.all_ROIs[y]}"
-        fig.update_layout(title_text=title)
-        fig.show()
+        sns.histplot(scaled_c[:, x, y], kde=True, color='blue', label='control',log_scale=(True, False))
+        sns.histplot(scaled_d[:, x, y], kde=True, color='orange', label='depressed',log_scale=(True, False))
+        plt.title(f"{self.all_ROIs[x]}:{self.all_ROIs[y]}")
+        plt.legend() 
+        # Perform t-test
+        t_stat, p_value = ttest_ind(scaled_c[:, x, y], scaled_d[:, x, y])
+        plt.annotate(f'p-value: {p_value:.4f}', xy=(0.5, 0.5), xycoords='axes fraction', ha='center', va='center',
+             bbox=dict(boxstyle='round', facecolor='white', alpha=0.7))
 
-        if save_as is None:
-            plt.savefig(
-                f"{self.fig_dir}{self.all_ROIs[x]}{self.all_ROIs[y]}_distributions"
-                + ".svg"
+
+    
+
+    def build_dataset_handedness(self, labels, is_cov=False):
+        """Builds the dataset."""
+        
+        df = pd.read_csv('/cnl/abcd/data/tabular/raw/abcd_ehis01.txt', sep='\t')
+        df=df[['subjectkey','ehi_y_ss_scoreb']]
+        hand=[]
+        for i in range(len(labels)):
+            # subject ID
+            lab=labels.index.values[i]
+            l='NDAR_'+lab.split('NDAR')[-1]
+            if df[df['subjectkey']==l]['ehi_y_ss_scoreb'].values=='1':
+                hand.append('R')
+            elif df[df['subjectkey']==l]['ehi_y_ss_scoreb'].values=='2':
+                hand.append('L')
+            elif df[df['subjectkey']==l]['ehi_y_ss_scoreb'].values=='3':
+                hand.append('M')
+        l_hand=labels
+        l_hand['hand']=hand
+        
+        control_L=[]
+        control_R=[]
+        depress_L=[]
+        depress_R=[]
+        
+
+        for i in range(len(l_hand)):
+            # subject ID
+            subj = "sub-" + l_hand.index.values[i]
+            print(subj)
+            # build DDC files list
+            files = glob.glob(
+                self.DDC_path + subj + "/single_sessions/" + self.weights_file_name
             )
-        else:
-            plt.savefig(f"{self.fig_dir}{save_as}")
+            print(files)
+
+            for f in files:
+                print(f)
+                if os.path.exists(f):
+                    # Control subjects
+                    if l_hand.values[i,0] == 0:
+                        print('control subject')
+                        d = np.asarray(pd.read_csv(f, header=None))
+                        if not len(d) < 98:
+                            if sum(sum(np.isnan(d))) < 1:
+                                if l_hand.values[i,1] == 'R':
+                                    print('right')
+                                    control_R.append(d)
+                                elif l_hand.values[i,1] == 'L':
+                                    print('L')
+                                    control_L.append(d)
+
+
+
+                    # Depressed subjects
+                    else:
+                        d = np.asarray(pd.read_csv(f, header=None))
+                        if not len(d) < 98:
+                            if sum(sum(np.isnan(d))) < 1:
+                                if l_hand.values[i,1] == 'R':
+                                    depress_R.append(np.asarray(
+                                        pd.read_csv(f, header=None)
+                                    ))
+                                elif l_hand.values[i,1] == 'L':
+                                    depress_L.append(np.asarray(pd.read_csv(f, header=None)))
+
+
+        control_R=np.asarray(control_R)
+        control_L=np.asarray(control_L)
+        depress_R=np.asarray(depress_R)
+        depress_L=np.asarray(depress_L)
+        
+        return control_R, control_L, depress_R, depress_L
+
+
