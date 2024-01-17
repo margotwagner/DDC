@@ -1300,38 +1300,7 @@ class FunctionalConnectivity:
 
         return a
     
-    # def plot_significant_sex_diff_distribution_subplot(self, stat_diff, control_M, control_F):
-
-    #     a = np.where(stat_diff == 1)
-        
-    #     # Calculate the number of subplots based on the number of significant differences
-    #     num_plots = np.shape(a)[1]
-    #     num_cols = 4  # You can adjust the number of columns in the grid
-    #     num_rows = (num_plots + num_cols - 1) // num_cols
-
-    #     # Create a grid of subplots
-    #     fig, axes = plt.subplots(num_rows, num_cols, figsize=(12, 3*num_rows))
-
-    #     for i, ax in enumerate(axes.flatten()):
-    #         if i < num_plots:
-    #             x = a[0][i]
-    #             y = a[1][i]
-    #             # Create histograms
-    #             sns.histplot(control_M[:, x, y], kde=True, color='cyan', label='Males', log_scale=(True, False), ax=ax)
-    #             sns.histplot(control_F[:, x, y], kde=True, color='magenta', label='Females', log_scale=(True, False), ax=ax)
-    #             ax.set_title(f"{self.all_ROIs[x]}:{self.all_ROIs[y]}")
-    #             ax.legend() 
-
-    #             # Perform t-test
-    #             t_stat, p_value = ttest_ind(control_M[:, x, y], control_F[:, x, y])
-    #             ax.annotate(f'p-value: {p_value:.4f}', xy=(0.5, 0.5), xycoords='axes fraction', ha='center', va='center',
-    #                         bbox=dict(boxstyle='round', facecolor='white', alpha=0.7))
-
-    #     # Adjust layout to prevent overlapping
-    #     plt.tight_layout()
-
-    #     return a
-    
+   
     def plot_significant_sex_diff_distribution(self, stat_diff, control_M, control_F):
 
         a = np.where(stat_diff == 1)
@@ -1510,78 +1479,453 @@ class FunctionalConnectivity:
                 )
         # return diff
 
+################# HANDEDNESS ANALYSIS ############################################# HANDEDNESS ANALYSIS ############################
+   
+    def get_controls_hand(self, labels):
 
-    # def build_dataset_handedness(self, labels, is_cov=False):
-    #     """Builds the dataset."""
+        labels=labels[1:]
+        labels_c=labels[labels[4]=='0']
         
-    #     df = pd.read_csv('/cnl/abcd/data/tabular/raw/abcd_ehis01.txt', sep='\t')
-    #     df=df[['subjectkey','ehi_y_ss_scoreb']]
-    #     hand=[]
-    #     for i in range(len(labels)):
-    #         # subject ID
-    #         lab=labels.index.values[i]
-    #         l='NDAR_'+lab.split('NDAR')[-1]
-    #         if df[df['subjectkey']==l]['ehi_y_ss_scoreb'].values=='1':
-    #             hand.append('R')
-    #         elif df[df['subjectkey']==l]['ehi_y_ss_scoreb'].values=='2':
-    #             hand.append('L')
-    #         elif df[df['subjectkey']==l]['ehi_y_ss_scoreb'].values=='3':
-    #             hand.append('M')
-    #     l_hand=labels
-    #     l_hand['hand']=hand
+        control_R=[]
+        control_L=[]
+
+        for i in range(len(labels_c)):
+            # subject ID
+            subj = "sub-" + labels_c.index.values[i]
+            # build DDC files list
+            files = glob.glob(
+                self.DDC_path + subj + "/single_sessions/" + self.weights_file_name
+            )
+            # print(subj)
+            for f in files:
+                if os.path.exists(f):
+                    # print(f)
+                    # sex
+                    if labels_c.values[i,2] == 'R':
+                        d = np.asarray(pd.read_csv(f, header=None))
+                        if not len(d) < 98:
+                            if sum(sum(np.isnan(d))) < 1:
+                                control_R.append(d)
+                    elif labels_c.values[i,2] == 'L':
+                        d = np.asarray(pd.read_csv(f, header=None))
+                        if not len(d) < 98:
+                            if sum(sum(np.isnan(d))) < 1:
+                                control_L.append(d)
+
+        control_R=np.asarray(control_R)
+        control_L=np.asarray(control_L)
+        return control_R, control_L
+    
+    def get_depr_hand(self, labels):
+
+        labels=labels[1:]
+        labels_c=labels[labels[4]=='1']
         
-    #     control_L=[]
-    #     control_R=[]
-    #     depress_L=[]
-    #     depress_R=[]
+        control_R=[]
+        control_L=[]
+
+        for i in range(len(labels_c)):
+            # subject ID
+            subj = "sub-" + labels_c.index.values[i]
+            # build DDC files list
+            files = glob.glob(
+                self.DDC_path + subj + "/single_sessions/" + self.weights_file_name
+            )
+            # print(subj)
+            for f in files:
+                if os.path.exists(f):
+                    # print(f)
+                    # sex
+                    if labels_c.values[i,2] == 'R':
+                        d = np.asarray(pd.read_csv(f, header=None))
+                        if not len(d) < 98:
+                            if sum(sum(np.isnan(d))) < 1:
+                                control_R.append(d)
+                    elif labels_c.values[i,2] == 'L':
+                        d = np.asarray(pd.read_csv(f, header=None))
+                        if not len(d) < 98:
+                            if sum(sum(np.isnan(d))) < 1:
+                                control_L.append(d)
+
+        depr_R=np.asarray(control_R)
+        depr_L=np.asarray(control_L)
+        return depr_R, depr_L
+    
+    def plot_significant_hand_diff(
+        self, control_R, control_L, condition, colorbar=True, save_as=None, bonferroni=False
+    ):
+        a = np.mean(control_R,axis=0)
+        b = np.mean(control_L,axis=0)
+
+        control_R = np.reshape(
+            control_R, (len(control_R), self.n_roi * self.n_roi)
+        )
+        control_L = np.reshape(
+            control_L, (len(control_L), self.n_roi * self.n_roi)
+        )
+        # s, p = mannwhitneyu(self.control, self.depress)
+        stat_diff = np.zeros(self.n_roi * self.n_roi)
+
+        from scipy.stats import ttest_ind
+
+        t_statistics = np.zeros((np.shape(control_R)[1], 1))
+        p_values = np.zeros((np.shape(control_R)[1], 1))
+
+        for i in range(np.shape(control_R)[1]):
+            t_statistics[i], p_values[i] = ttest_ind(
+                control_R[:, i], control_L[:, i]
+            )
+            # t_statistics[i], p_values[i] = mannwhitneyu(c[:, i], d[:, i])
+
+        p = p_values.reshape((self.n_roi * self.n_roi))
+
+        if bonferroni:
+            n_comp = self.control.shape[1]
+            adjusted_alpha = 0.05 / n_comp
+            stat_diff[np.where(p < adjusted_alpha)[0]] = 1
+        else:
+            stat_diff[np.where(p < 0.05)[0]] = 1
+
+        stat_diff = np.reshape(stat_diff, (self.n_roi, self.n_roi))
+        # diff = b - a
+        diff = abs(b) - abs(a)
+        diff[np.where(stat_diff == 0)] = 0
+
+        plt.figure(figsize=(10, 5))
+        plt.subplot(121)
+        plt.imshow(stat_diff, cmap="Greys")
+        plt.clim([0, 1])
+        plt.colorbar()
+        if condition==[0,0]:
+            plt.title("Hand different connections in controls")
+        if condition==[1,1]:
+            plt.title("Hand different connections in depressed")
+        if condition==[0,1]:
+            plt.title("Different connections in R-handed")
+        if condition==[1,0]:
+            plt.title("Different connections in L-handed")
+        plt.xlabel("ROI #")
+        plt.ylabel("ROI #")
+        plt.subplot(122)
+        im = plt.imshow(diff, cmap="RdBu_r")
+        for i in range(len(diff)):
+            im.axes.add_patch(
+                plt.Rectangle((i - 0.5, i - 0.5), 1, 1, fill=True, color="gray")
+            )
+        plt.clim([-np.max(diff), np.max(diff)])
+        plt.colorbar()
+        if condition==[0,0]:
+            plt.title("Hand different connections in controls")
+        if condition==[1,1]:
+            plt.title("Hand different connections in depressed")
+        if condition==[0,1]:
+            plt.title("Different connections in R-handed")
+        if condition==[1,0]:
+            plt.title("Different connections in L-handed")
+        plt.xlabel("ROI #")
+        plt.ylabel("ROI #")
+
+        pv = np.reshape(p, (self.n_roi, self.n_roi))
+        p_table_list = []
+        for i in range(self.n_roi):
+            for j in range(self.n_roi):
+                new_row = {
+                    "Areas": self.all_ROIs[i] + "-" + self.all_ROIs[j],
+                    "p-value": pv[i, j],
+                }
+                p_table_list.append(new_row)
+
+        p_table = pd.DataFrame(p_table_list)
+        p_table.to_csv(
+            "/home/acamassa/ABCD/DDC_figures/p_values_table_hand"+ str(condition)+".csv", index=False
+        )
+
+        plt.savefig(f"{self.fig_dir}{save_as}")
+
+        return stat_diff
+    
+
+    def plot_network_heatmap_hand(self, control_M, depr_M, network_name, hand, save_as=None, bonferroni=False, scaling=0):
+            """plot binary matrix of significant connections for a specific subnetwork"""
+            plt.figure(figsize=(15, 5))
+
+            scaled_c=control_M
+            scaled_d=depr_M
+
+            indices = self.get_network_indices(network_name)
+            labels = self.get_network_labels(network_name)
+
+            network_ctrl = scaled_c[:, indices, :]
+            network_ctrl = network_ctrl[:, :, indices]
+            network_depr = scaled_d[:, indices, :]
+            network_depr = network_depr[:, :, indices]
+
+            # network_ctrl = self.get_network_ddc(network_name, "control")
+            # network_depr = self.get_network_ddc(network_name, "depressed")
+
+            # Get control values
+            # avg_ctrl = self.get_mean_ddc("control")
+            avg_ctrl = np.mean(self.control_weights, axis=0)
+            ctrl_fc = self.subset_fc(avg_ctrl, indices)
+            cbar_min = min(ctrl_fc.flatten())
+            cbar_max = max(ctrl_fc.flatten())
+
+            # Get depressed values
+            # avg_depr = self.get_mean_ddc("depressed")
+            avg_depr = np.mean(self.depress_weights, axis=0)
+            depr_fc = self.subset_fc(avg_depr, indices)
+            cbar_min = min(cbar_min, min(depr_fc.flatten()))
+            cbar_max = max(cbar_max, max(depr_fc.flatten()))
+
+            # Plot control
+            plt.subplot(131)
+            plt.title("{} {} control".format(network_name, hand))
+            im = plt.imshow(ctrl_fc, cmap="RdBu_r")
+            plt.colorbar()
+            # Add gray boxes for self-connections
+            for i in range(len(ctrl_fc)):
+                im.axes.add_patch(
+                    plt.Rectangle((i - 0.5, i - 0.5), 1, 1, fill=True, color="gray")
+                )
+            plt.clim([cbar_min, cbar_max])
+            plt.yticks(np.arange(len(indices)), labels)
+            plt.xticks(np.arange(len(indices)), labels, rotation="vertical")
+
+            # Plot depressed
+            plt.subplot(132)
+            plt.title("{} {} depressed".format(network_name, hand))
+            im = plt.imshow(depr_fc, cmap="RdBu_r")
+            plt.colorbar()
+            # Add gray boxes for self-connections
+            for i in range(len(depr_fc)):
+                im.axes.add_patch(
+                    plt.Rectangle((i - 0.5, i - 0.5), 1, 1, fill=True, color="gray")
+                )
+            plt.clim([cbar_min, cbar_max])
+            plt.yticks(np.arange(len(indices)), labels)
+            plt.xticks(np.arange(len(indices)), labels, rotation="vertical")
+
+            # non parametric statistical test for independent variables
+            # _, p = mannwhitneyu(network_ctrl, network_depr)
+            from scipy.stats import ttest_ind
+
+            c = network_ctrl.reshape(len(network_ctrl), -1)
+            d = network_depr.reshape(len(network_depr), -1)
+
+            t_statistics = np.zeros((np.shape(c)[1], 1))
+            p_values = np.zeros((np.shape(c)[1], 1))
+            for i in range(np.shape(c)[1]):
+                t_statistics[i], p_values[i] = ttest_ind(c[:, i], d[:, i])
+                # t_statistics[i], p_values[i] = mannwhitneyu(c[:, i], d[:, i])
+
+            p = p_values.reshape(np.shape(network_ctrl)[1:])
+            # _, p = ttest_ind(network_ctrl, network_depr)
+            # diff = depr_fc - ctrl_fc
+            diff= abs(depr_fc) - abs(ctrl_fc)
+
+            if bonferroni:
+                n_comp = network_ctrl.shape[1]
+                adjusted_alpha = 0.05 / n_comp
+                diff[np.where(p > adjusted_alpha)] = 0
+            else:
+                diff[np.where(p > 0.05)] = 0
+
+            # Plot if there are significant differences
+            # if sum(sum(diff)) > 0:
+            plt.subplot(133)
+            im = plt.imshow(diff, cmap="RdBu_r")
+            # if network_name == "CEN":
+            #     plt.clim([-0.0002, 0.0002])
+            # else:
+            plt.clim([-np.max(diff), np.max(diff)])
+
+            plt.colorbar()
+
+            for i in range(len(diff)):
+                im.axes.add_patch(
+                    plt.Rectangle((i - 0.5, i - 0.5), 1, 1, fill=True, color="gray")
+                )
+                            
+            for i in range(len(ctrl_fc)):
+                for j in range(len(ctrl_fc)):
+                    if diff[i,j]!=0:
+                        if i!=j:
+                            if np.sign(ctrl_fc[i,j]) != np.sign(depr_fc[i,j]):
+                                plt.scatter(j, i, marker='*', color='k', s=50) 
+                                # plt.xlim([0,len(ctrl_fc)])
+                                # plt.ylim([0,len(ctrl_fc)])
+
+
+
+
+            # plt.colorbar()
+            plt.yticks(np.arange(len(indices)), labels)
+            plt.xticks(np.arange(len(indices)), labels, rotation="vertical")
+            plt.title("Statisticaly different fc")
+
+
+
+            if save_as is not None:
+                plt.savefig(f"{self.fig_dir}{save_as}")
+            else:
+                if bonferroni:
+                    plt.savefig(
+                        f"{self.fig_dir}{self.weights_file_name.split('*')[0]}_sig_conn_matrix"
+                        + str(network_name)
+                        + "Bonferroni.svg",
+                        format="svg",
+                    )
+                else:
+                    plt.savefig(
+                        f"{self.fig_dir}{self.weights_file_name.split('*')[0]}_sig_conn_matrix"
+                        + str(network_name)
+                        + ".svg",
+                        format="svg",
+                    )
+            # return diff
+                    
+    def plot_significant_hand_diff_distribution(self, stat_diff, control_R, control_L):
+
+        a = np.where(stat_diff == 1)
+        
+        # Filter ROIs based on the condition
+        valid_rois = [roi for roi in self.all_ROIs if roi not in ['CSF', '3V', '4V']]
+        
+        # Filter significant differences based on valid ROIs
+        valid_diff_indices = [(x, y) for x, y in zip(a[0], a[1]) if self.all_ROIs[x] in valid_rois and self.all_ROIs[y] in valid_rois]
+        
+        # Calculate the number of subplots based on the number of valid significant differences
+        num_plots = len(valid_diff_indices)
+        num_cols = 4  # You can adjust the number of columns in the grid
+        num_rows = (num_plots + num_cols - 1) // num_cols
+
+        # Create a grid of subplots
+        fig, axes = plt.subplots(num_rows, num_cols, figsize=(12, 3*num_rows))
+
+        for i, (x, y) in enumerate(valid_diff_indices):
+            ax = axes.flatten()[i]
+
+            # Create histograms
+            sns.histplot(control_R[:, x, y], kde=True, color='green', label='Right', log_scale=(True, False), ax=ax)
+            sns.histplot(control_L[:, x, y], kde=True, color='orange', label='Left', log_scale=(True, False), ax=ax)
+            ax.set_title(f"{self.all_ROIs[x]}:{self.all_ROIs[y]}")
+            ax.legend() 
+
+            # Perform t-test
+            t_stat, p_value = ttest_ind(control_R[:, x, y], control_L[:, x, y])
+            ax.annotate(f'p-value: {p_value:.4f}', xy=(0.5, 0.5), xycoords='axes fraction', ha='center', va='center',
+                        bbox=dict(boxstyle='round', facecolor='white', alpha=0.7))
+
+        # Adjust layout to prevent overlapping
+        plt.tight_layout()
+
+        return a
+    
+
+    def plot_network_connectivity_graph_hand(self, control_R, state, hand):
+        """plot network graph on brain template of connections for left or right handed"""
+
+        coord_list = np.asarray(self.positions[["x", "y", "z"]])
+        R = np.nanmean(control_R, axis=0)
+        if hand=='R':
+            color='green'
+        else:
+            color='orange'
+        fig1=plt.figure()
+        display = plotting.plot_connectome(
+            R,
+            coord_list,
+            node_color=color,
+            edge_cmap=None,
+            # edge_threshold=95,
+            figure=fig1,
+            #             edge_vmax=ev,
+            title="{} Right".format(state),
+            colorbar=True,
+        )
+
+        plotting.show()
+
+        display.savefig(
+            f"{self.fig_dir}{self.weights_file_name.split('*')[0]}{hand}_network_connectivity"
+            + str(state)
+            + ".svg"
+        )
+
+
+    def plot_means_std_matrice_hand(self, control_R, control_L, state, save_as=None, cmap="Reds"):
+        R = np.nanmean(control_R, axis=0)
+        L = np.nanmean(control_L, axis=0)
+
+        R_std=np.nanstd(control_R, axis=0)
+        L_std=np.nanstd(control_L, axis=0)
+
+        plt.figure(figsize=(10, 10))
+
+        plt.subplot(221)
+        im = plt.imshow(R, cmap="RdBu_r")
+        for i in range(len(R)):
+            im.axes.add_patch(
+                plt.Rectangle((i - 0.5, i - 0.5), 1, 1, fill=True, color="gray")
+            )
+        # Get R values
+        cbar_min = min(R.flatten())
+        cbar_max = max(R.flatten())
+
+        # Get L values
+        cbar_min = min(cbar_min, min(L.flatten()))
+        cbar_max = max(cbar_max, max(L.flatten()))
+
+        plt.clim([cbar_min, cbar_max])
+        # plt.clim([-400, 400])
+        plt.colorbar()
+        plt.title("avg DDC R")
+        plt.xlabel("ROI #")
+        plt.ylabel("ROI #")
+
+        plt.subplot(222)
+        im = plt.imshow(L, cmap="RdBu_r")
+        for i in range(len(L)):
+            im.axes.add_patch(
+                plt.Rectangle((i - 0.5, i - 0.5), 1, 1, fill=True, color="gray")
+            )
+        plt.clim([cbar_min, cbar_max])
+        plt.title("avg DDC L")
+        plt.xlabel("ROI #")
+        plt.ylabel("ROI #")
+        plt.colorbar()
+
+        plt.subplot(223)
+        
+        im = plt.imshow(R_std, cmap=cmap)
+        plt.colorbar()
+        # plt.clim([0, 10000])
+        plt.title("std DDC R")
+        plt.xlabel("ROI #")
+        plt.ylabel("ROI #")
         
 
-    #     for i in range(len(l_hand)):
-    #         # subject ID
-    #         subj = "sub-" + l_hand.index.values[i]
-    #         print(subj)
-    #         # build DDC files list
-    #         files = glob.glob(
-    #             self.DDC_path + subj + "/single_sessions/" + self.weights_file_name
-    #         )
-    #         print(files)
+        # Get control values
+        cbar_min = min(R_std.flatten())
+        cbar_max = max(R_std.flatten())
+        # Get depressed values
+        cbar_min = min(cbar_min, min(L_std.flatten()))
+        cbar_max = max(cbar_max, max(L_std.flatten()))
+        plt.clim([cbar_min, cbar_max])
 
-    #         for f in files:
-    #             print(f)
-    #             if os.path.exists(f):
-    #                 # Control subjects
-    #                 if l_hand.values[i,0] == 0:
-    #                     print('control subject')
-    #                     d = np.asarray(pd.read_csv(f, header=None))
-    #                     if not len(d) < 98:
-    #                         if sum(sum(np.isnan(d))) < 1:
-    #                             if l_hand.values[i,1] == 'R':
-    #                                 print('right')
-    #                                 control_R.append(d)
-    #                             elif l_hand.values[i,1] == 'L':
-    #                                 print('L')
-    #                                 control_L.append(d)
+        plt.subplot(224)
+        im = plt.imshow(L_std, cmap=cmap)
+        plt.colorbar()
+        plt.clim([cbar_min, cbar_max])
+        # plt.clim([0, 10000])
+        plt.title("std DDC depr")
+        plt.xlabel("ROI #")
+        plt.ylabel("ROI #")
 
-
-
-    #                 # Depressed subjects
-    #                 else:
-    #                     d = np.asarray(pd.read_csv(f, header=None))
-    #                     if not len(d) < 98:
-    #                         if sum(sum(np.isnan(d))) < 1:
-    #                             if l_hand.values[i,1] == 'R':
-    #                                 depress_R.append(np.asarray(
-    #                                     pd.read_csv(f, header=None)
-    #                                 ))
-    #                             elif l_hand.values[i,1] == 'L':
-    #                                 depress_L.append(np.asarray(pd.read_csv(f, header=None)))
-
-
-    #     control_R=np.asarray(control_R)
-    #     control_L=np.asarray(control_L)
-    #     depress_R=np.asarray(depress_R)
-    #     depress_L=np.asarray(depress_L)
-        
-    #     return control_R, control_L, depress_R, depress_L
-
-
+        if save_as is None:
+            plt.savefig(
+                f"{self.fig_dir}{self.weights_file_name.split('*')[0]}_RL_mean_std.svg",
+                format="svg",
+            )
+        else:
+            plt.savefig(f"{self.fig_dir}{save_as}")
