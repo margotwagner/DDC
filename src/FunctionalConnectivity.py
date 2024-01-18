@@ -1837,7 +1837,7 @@ class FunctionalConnectivity:
             coord_list,
             node_color=color,
             edge_cmap=None,
-            # edge_threshold=95,
+            edge_threshold='95%',
             figure=fig1,
             #             edge_vmax=ev,
             title="{} Right".format(state),
@@ -1929,3 +1929,19 @@ class FunctionalConnectivity:
             )
         else:
             plt.savefig(f"{self.fig_dir}{save_as}")
+
+
+    def plot_interactive_connectivity_graph_hand(self, control_R, state, save_as=None,):
+
+        coord_list = np.asarray(self.positions[["x", "y", "z"]])
+
+        view = plotting.view_connectome(
+            control_R,
+            coord_list,
+            edge_cmap="RdBu_r",
+            edge_threshold='95%',
+            # symmetric_cmap=False,
+            colorbar=True,
+            node_color="k",
+        )
+        return view
