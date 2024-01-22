@@ -134,11 +134,11 @@ class FunctionalConnectivity:
 
         if self.weights_file_name.startswith("subc_"):
             self.positions = pd.read_csv(
-                "/nadata/cnl/abcd/data/imaging/fmri/rsfmri/interim/segmented/baseline/downloads/sub-NDARINV04GAB2AA/ROIs_centroid_coordinates.csv"
+                "/nadata/cnl/abcd/data/imaging/fmri/rsfmri/interim/segmented/NO_baseline/downloads/sub-NDARINV04GAB2AA/ROIs_centroid_coordinates.csv"
             )
         else:
             self.positions = pd.read_csv(
-                "/nadata/cnl/abcd/data/imaging/fmri/rsfmri/interim/segmented/baseline/downloads/sub-NDARINV04GAB2AA/ROIs_centroid_coordinates.csv"
+                "/nadata/cnl/abcd/data/imaging/fmri/rsfmri/interim/segmented/NO_baseline/downloads/sub-NDARINV04GAB2AA/ROIs_centroid_coordinates.csv"
             )[30:]
 
         # builds the dataset and assign the output to the variables
@@ -186,7 +186,7 @@ class FunctionalConnectivity:
             for f in files:
                 if os.path.exists(f):
                     # Control subjects
-                    if self.labels.values[i] == 0:
+                    if self.labels.values[i] == '0':
                         d = np.asarray(pd.read_csv(f, header=None))
                         if not len(d) < self.n_roi:
                             if sum(sum(np.isnan(d))) < 1:
@@ -264,7 +264,7 @@ class FunctionalConnectivity:
             dataset_labels,
         )
 
-
+    
     def get_binary_connections_percentage_control(self):
         sig_conn = np.reshape(
             sum(self.control_weights_vec) / np.shape(self.control_weights_vec)[0],
@@ -440,7 +440,7 @@ class FunctionalConnectivity:
         plt.ylabel("ROI #")
 
     def plot_significant_connections_matrix(
-        self, colorbar=True, save_as=None, bonferroni=False
+        self, colorbar=True, save_as=None, bonferroni=False, median=0, ttest=1
     ):
         # s, p = mannwhitneyu(self.control, self.depress)
         stat_diff = np.zeros(self.n_roi * self.n_roi)
@@ -451,10 +451,12 @@ class FunctionalConnectivity:
         p_values = np.zeros((np.shape(self.control)[1], 1))
 
         for i in range(np.shape(self.control)[1]):
-            t_statistics[i], p_values[i] = ttest_ind(
-                self.control[:, i], self.depress[:, i]
-            )
-            # t_statistics[i], p_values[i] = mannwhitneyu(c[:, i], d[:, i])
+            if ttest:
+                t_statistics[i], p_values[i] = ttest_ind(
+                    self.control[:, i], self.depress[:, i]
+                )
+            else:
+                t_statistics[i], p_values[i] = mannwhitneyu(self.control[:, i], self.depress[:, i])
 
         p = p_values.reshape((self.n_roi * self.n_roi))
 
@@ -466,8 +468,14 @@ class FunctionalConnectivity:
             stat_diff[np.where(p < 0.05)[0]] = 1
 
         stat_diff = np.reshape(stat_diff, (self.n_roi, self.n_roi))
-        a = self.get_mean_ddc("control")
-        b = self.get_mean_ddc("depressed")
+
+        if median:
+            a = np.nanmedian(self.control_weights, axis=0)
+            b = np.nanmedian(self.depress_weights, axis=0)
+        else:
+            a = self.get_mean_ddc("control")
+            b = self.get_mean_ddc("depressed")
+
         # diff = b - a
         diff = abs(b) - abs(a)
         diff[np.where(stat_diff == 0)] = 0
@@ -523,7 +531,7 @@ class FunctionalConnectivity:
 
         return p
     
-    def plot_significant_connections_bar(self, bonferroni=False):
+    def plot_significant_connections_bar(self, bonferroni=False, ttest=1):
 
         stat_diff = np.zeros(self.n_roi * self.n_roi)
 
@@ -531,12 +539,13 @@ class FunctionalConnectivity:
 
         t_statistics = np.zeros((np.shape(self.control)[1], 1))
         p_values = np.zeros((np.shape(self.control)[1], 1))
-
         for i in range(np.shape(self.control)[1]):
-            t_statistics[i], p_values[i] = ttest_ind(
-                self.control[:, i], self.depress[:, i]
-            )
-            # t_statistics[i], p_values[i] = mannwhitneyu(c[:, i], d[:, i])
+            if ttest:
+                t_statistics[i], p_values[i] = ttest_ind(
+                    self.control[:, i], self.depress[:, i]
+                )
+            else:
+                t_statistics[i], p_values[i] = mannwhitneyu(self.control[:, i], self.depress[:, i])
 
         p = p_values.reshape((self.n_roi * self.n_roi))
 
@@ -615,9 +624,14 @@ class FunctionalConnectivity:
 
         # plt.colorbar()
 
-    def plot_means_std_matrices(self, save_as=None,cmap="Reds"):
-        avg_ddc_ctrl = self.get_mean_ddc("control")
-        avg_ddc_depr = self.get_mean_ddc("depressed")
+    def plot_means_std_matrices(self, save_as=None,cmap="Reds", median=0):
+        if median:
+            avg_ddc_ctrl=np.nanmedian(self.control_weights, axis=0)
+            avg_ddc_depr=np.nanmedian(self.depress_weights, axis=0)
+        else:
+            avg_ddc_ctrl = self.get_mean_ddc("control")
+            avg_ddc_depr = self.get_mean_ddc("depressed")
+
         plt.figure(figsize=(10, 10))
         plt.subplot(221)
         im = plt.imshow(avg_ddc_ctrl, cmap="RdBu_r")
@@ -701,7 +715,7 @@ class FunctionalConnectivity:
             plt.imshow(DDC[i, :, :], cmap="RdBu_r")
             # plt.clim([-0.1, 0.1])
             plt.colorbar()
-            plt.title("Subject: " + n)
+            plt.title(str(i))
 
             plt.axis("off")
             k = k + 1
@@ -712,9 +726,10 @@ class FunctionalConnectivity:
         a = a[:, include]
         return a
 
-    def plot_network_heatmap(self, network_name, save_as=None, bonferroni=False, scaling=0):
+    def plot_network_heatmap(self, network_name, save_as=None, bonferroni=False, scaling=0, median=0, ttest=1):
         """plot binary matrix of significant connections for a specific subnetwork"""
         plt.figure(figsize=(15, 5))
+
         if scaling:
             scaled_c, scaled_d = self.standard_scaling()
         else:
@@ -734,14 +749,23 @@ class FunctionalConnectivity:
 
         # Get control values
         # avg_ctrl = self.get_mean_ddc("control")
-        avg_ctrl = np.mean(self.control_weights, axis=0)
+
+        if median:
+            avg_ctrl = np.nanmedian(self.control_weights, axis=0)
+        else:
+            avg_ctrl = np.nanmean(self.control_weights, axis=0)
+
         ctrl_fc = self.subset_fc(avg_ctrl, indices)
         cbar_min = min(ctrl_fc.flatten())
         cbar_max = max(ctrl_fc.flatten())
 
         # Get depressed values
         # avg_depr = self.get_mean_ddc("depressed")
-        avg_depr = np.mean(self.depress_weights, axis=0)
+        if median:
+            avg_depr = np.nanmedian(self.depress_weights, axis=0)
+        else:
+            avg_depr = np.nanmean(self.depress_weights, axis=0)
+
         depr_fc = self.subset_fc(avg_depr, indices)
         cbar_min = min(cbar_min, min(depr_fc.flatten()))
         cbar_max = max(cbar_max, max(depr_fc.flatten()))
@@ -784,12 +808,13 @@ class FunctionalConnectivity:
         t_statistics = np.zeros((np.shape(c)[1], 1))
         p_values = np.zeros((np.shape(c)[1], 1))
         for i in range(np.shape(c)[1]):
-            t_statistics[i], p_values[i] = ttest_ind(c[:, i], d[:, i])
-            # t_statistics[i], p_values[i] = mannwhitneyu(c[:, i], d[:, i])
+            if ttest:
+                t_statistics[i], p_values[i] = ttest_ind(c[:, i], d[:, i])
+            else:
+                t_statistics[i], p_values[i] = mannwhitneyu(c[:, i], d[:, i])
 
         p = p_values.reshape(np.shape(network_ctrl)[1:])
-        # _, p = ttest_ind(network_ctrl, network_depr)
-        # diff = depr_fc - ctrl_fc
+        # absolute difference
         diff= abs(depr_fc) - abs(ctrl_fc)
 
         if bonferroni:
@@ -919,7 +944,7 @@ class FunctionalConnectivity:
         )
 
     def plot_network_connectivity_graph_diff(
-        self, network_name, ev, save_as=None, bonferroni=False, scaling=0
+        self, network_name, ev, save_as=None, bonferroni=False, scaling=0, ttest=1
     ):
         """plot differences between ctrl and depressed network graph on brain template for a specific subnetwork"""
     
@@ -951,12 +976,13 @@ class FunctionalConnectivity:
         cbar_min = min(cbar_min, min(depr_fc.flatten()))
         cbar_max = max(cbar_max, max(depr_fc.flatten()))
 
-        # non parametric statistical test for independent variables
-        # _, p = mannwhitneyu(network_ctrl, network_depr)
 
         from scipy.stats import ttest_ind
+        if ttest:
+            _, p = ttest_ind(network_ctrl, network_depr)
+        else:
+            _, p = mannwhitneyu(network_ctrl, network_depr)
 
-        _, p = ttest_ind(network_ctrl, network_depr)
         diff = abs(depr_fc) - abs(ctrl_fc)
 
         if bonferroni:
@@ -965,10 +991,6 @@ class FunctionalConnectivity:
             diff[np.where(p > adjusted_alpha)] = 0
         else:
             diff[np.where(p > 0.05)] = 0
-
-        #         if sum(sum(diff)) > 0:
-        #             if ev == []:
-        #                 ev = 0.002
 
         display = plotting.plot_connectome(
             diff,
@@ -1084,7 +1106,8 @@ class FunctionalConnectivity:
 
 
 
-    def plot_connection_probDistr(self, x=None, y=None, save_as=None, scaling=0):
+
+    def plot_connection_probDistr(self, x=None, y=None, save_as=None, scaling=0, ttest=1):
         "plotting the distribution for the selected connection"
         "x and y can be int = index of the desired ROIs or str + name of the desired ROIs to compare"
         import seaborn as sns
@@ -1093,24 +1116,76 @@ class FunctionalConnectivity:
         if scaling:
             scaled_c, scaled_d = self.standard_scaling()
         else:
-            scaled_c=self.control_weights
-            scaled_d=self.depress_weights
+            scaled_c = self.control_weights
+            scaled_d = self.depress_weights
 
         if isinstance(x, str):
             x = self.all_ROIs.index(x)
             y = self.all_ROIs.index(y)
-            
+
         # Create histograms
         plt.figure(figsize=(12, 6))
 
-        sns.histplot(scaled_c[:, x, y], kde=True, color='blue', label='control',log_scale=(True, False))
-        sns.histplot(scaled_d[:, x, y], kde=True, color='orange', label='depressed',log_scale=(True, False))
+        sns.histplot( np.log(np.abs(scaled_c[:, x, y])) , kde=True, color='blue', label='control', log_scale=(False, False))
+        sns.histplot(np.log(np.abs(scaled_d[:, x, y])), kde=True, color='orange', label='depressed', log_scale=(False, False))
+
+        # Add mean and median vertical bars
+        mean_c = np.nanmean(np.log(np.abs(scaled_c[:, x, y])))
+        mean_d = np.nanmean(np.log(np.abs(scaled_d[:, x, y])))
+        median_c = np.nanmedian(np.log(np.abs(scaled_c[:, x, y])))
+        median_d = np.nanmedian(np.log(np.abs(scaled_d[:, x, y])))
+
+        plt.axvline(x=mean_c, color='cyan', linestyle='dashed', linewidth=2, label='Mean (Control)')
+        plt.axvline(x=mean_d, color='red', linestyle='dashed', linewidth=2, label='Mean (Depressed)')
+        plt.axvline(x=median_c, color='cyan', linestyle='dotted', linewidth=2, label='Median (Control)')
+        plt.axvline(x=median_d, color='red', linestyle='dotted', linewidth=2, label='Median (Depressed)')
+
         plt.title(f"{self.all_ROIs[x]}:{self.all_ROIs[y]}")
-        plt.legend() 
+        plt.legend()
+
         # Perform t-test
-        t_stat, p_value = ttest_ind(scaled_c[:, x, y], scaled_d[:, x, y])
+        if ttest:
+            t_stat, p_value = ttest_ind(scaled_c[:, x, y], scaled_d[:, x, y], nan_policy='omit')
+        else:
+            t_stat, p_value = mannwhitneyu(scaled_c[:, x, y], scaled_d[:, x, y])
+
         plt.annotate(f'p-value: {p_value:.4f}', xy=(0.5, 0.5), xycoords='axes fraction', ha='center', va='center',
-             bbox=dict(boxstyle='round', facecolor='white', alpha=0.7))
+                    bbox=dict(boxstyle='round', facecolor='white', alpha=0.7))
+
+        plt.show()
+
+
+    # def plot_connection_probDistr(self, x=None, y=None, save_as=None, scaling=0, ttest=1):
+    #     "plotting the distribution for the selected connection"
+    #     "x and y can be int = index of the desired ROIs or str + name of the desired ROIs to compare"
+    #     import seaborn as sns
+    #     from scipy.stats import ttest_ind
+
+    #     if scaling:
+    #         scaled_c, scaled_d = self.standard_scaling()
+    #     else:
+    #         scaled_c=self.control_weights
+    #         scaled_d=self.depress_weights
+
+    #     if isinstance(x, str):
+    #         x = self.all_ROIs.index(x)
+    #         y = self.all_ROIs.index(y)
+            
+    #     # Create histograms
+    #     plt.figure(figsize=(12, 6))
+
+    #     sns.histplot(scaled_c[:, x, y], kde=True, color='blue', label='control',log_scale=(True, False))
+    #     sns.histplot(scaled_d[:, x, y], kde=True, color='orange', label='depressed',log_scale=(True, False))
+    #     plt.title(f"{self.all_ROIs[x]}:{self.all_ROIs[y]}")
+    #     plt.legend() 
+    #     # Perform t-test
+    #     if ttest:
+    #         t_stat, p_value = ttest_ind(scaled_c[:, x, y], scaled_d[:, x, y])
+    #     else:
+    #         t_stat, p_value = mannwhitneyu(scaled_c[:, x, y], scaled_d[:, x, y])
+
+    #     plt.annotate(f'p-value: {p_value:.4f}', xy=(0.5, 0.5), xycoords='axes fraction', ha='center', va='center',
+    #          bbox=dict(boxstyle='round', facecolor='white', alpha=0.7))
 
 ################# SEX ANALYSIS ############################################# SEX ANALYSIS ############################
     
@@ -1185,10 +1260,14 @@ class FunctionalConnectivity:
         return control_M, control_F
 
     def plot_significant_sex_diff(
-        self, control_M, control_F, condition, colorbar=True, save_as=None, bonferroni=False
+        self, control_M, control_F, condition, colorbar=True, save_as=None, bonferroni=False, median=0, ttest=1
     ):
-        a = np.mean(control_M,axis=0)
-        b = np.mean(control_F,axis=0)
+        if median==0:
+            a = np.nanmean(control_M,axis=0)
+            b = np.nanmean(control_F,axis=0)
+        else:
+            a = np.nanmedian(control_M,axis=0)
+            b = np.nanmedian(control_F,axis=0)
 
         control_M = np.reshape(
             control_M, (len(control_M), self.n_roi * self.n_roi)
@@ -1196,7 +1275,7 @@ class FunctionalConnectivity:
         control_F = np.reshape(
             control_F, (len(control_F), self.n_roi * self.n_roi)
         )
-        # s, p = mannwhitneyu(self.control, self.depress)
+
         stat_diff = np.zeros(self.n_roi * self.n_roi)
 
         from scipy.stats import ttest_ind
@@ -1205,10 +1284,15 @@ class FunctionalConnectivity:
         p_values = np.zeros((np.shape(control_M)[1], 1))
 
         for i in range(np.shape(control_M)[1]):
-            t_statistics[i], p_values[i] = ttest_ind(
-                control_M[:, i], control_F[:, i]
-            )
-            # t_statistics[i], p_values[i] = mannwhitneyu(c[:, i], d[:, i])
+            if ttest:
+                t_statistics[i], p_values[i] = ttest_ind(
+                    control_M[:, i], control_F[:, i]
+                )
+            else:
+                t_statistics[i], p_values[i] = mannwhitneyu(
+                    control_M[:, i], control_F[:, i]
+                )
+
 
         p = p_values.reshape((self.n_roi * self.n_roi))
 
@@ -1277,7 +1361,7 @@ class FunctionalConnectivity:
 
         return stat_diff
     
-    def plot_significant_sex_diff_distribution(self, stat_diff, control_M, control_F):
+    def plot_significant_sex_diff_distribution(self, stat_diff, control_M, control_F, ttest=1):
 
         a=np.where(stat_diff==1)
         for i in range(np.shape(a)[1]):
@@ -1293,7 +1377,11 @@ class FunctionalConnectivity:
             plt.title(f"{self.all_ROIs[x]}:{self.all_ROIs[y]}")
             plt.legend() 
             # Perform t-test
-            t_stat, p_value = ttest_ind(control_M[:, x, y], control_F[:, x, y])
+            if ttest:
+                _ , p_value = ttest_ind(control_M[:, x, y], control_F[:, x, y])
+            else:
+                _ , p_value = mannwhitneyu(control_M[:, x, y], control_F[:, x, y])
+
             plt.annotate(f'p-value: {p_value:.4f}', xy=(0.5, 0.5), xycoords='axes fraction', ha='center', va='center',
                 bbox=dict(boxstyle='round', facecolor='white', alpha=0.7))
 
@@ -1301,7 +1389,7 @@ class FunctionalConnectivity:
         return a
     
    
-    def plot_significant_sex_diff_distribution(self, stat_diff, control_M, control_F):
+    def plot_significant_sex_diff_distribution(self, stat_diff, control_M, control_F, ttest=1):
 
         a = np.where(stat_diff == 1)
         
@@ -1328,8 +1416,12 @@ class FunctionalConnectivity:
             ax.set_title(f"{self.all_ROIs[x]}:{self.all_ROIs[y]}")
             ax.legend() 
 
-            # Perform t-test
-            t_stat, p_value = ttest_ind(control_M[:, x, y], control_F[:, x, y])
+            # Stats
+            if ttest:
+                _ , p_value = ttest_ind(control_M[:, x, y], control_F[:, x, y])
+            else:
+                _ , p_value = mannwhitneyu(control_M[:, x, y], control_F[:, x, y])
+
             ax.annotate(f'p-value: {p_value:.4f}', xy=(0.5, 0.5), xycoords='axes fraction', ha='center', va='center',
                         bbox=dict(boxstyle='round', facecolor='white', alpha=0.7))
 
@@ -1340,7 +1432,7 @@ class FunctionalConnectivity:
 
 
 
-    def plot_network_heatmap_sex(self, control_M, depr_M, network_name, sex, save_as=None, bonferroni=False, scaling=0):
+    def plot_network_heatmap_sex(self, control_M, depr_M, network_name, sex, save_as=None, bonferroni=False, scaling=0, median=0,ttest=1):
         """plot binary matrix of significant connections for a specific subnetwork"""
         plt.figure(figsize=(15, 5))
 
@@ -1360,14 +1452,22 @@ class FunctionalConnectivity:
 
         # Get control values
         # avg_ctrl = self.get_mean_ddc("control")
-        avg_ctrl = np.mean(self.control_weights, axis=0)
+        if median==0:
+            avg_ctrl = np.nanmean(self.control_weights, axis=0)
+        else:
+            avg_ctrl = np.nanmedian(self.control_weights, axis=0)
+
         ctrl_fc = self.subset_fc(avg_ctrl, indices)
         cbar_min = min(ctrl_fc.flatten())
         cbar_max = max(ctrl_fc.flatten())
 
         # Get depressed values
         # avg_depr = self.get_mean_ddc("depressed")
-        avg_depr = np.mean(self.depress_weights, axis=0)
+        if median==0:
+            avg_depr = np.nanmean(self.depress_weights, axis=0)
+        else:
+            avg_depr = np.nanmedian(self.depress_weights, axis=0)
+
         depr_fc = self.subset_fc(avg_depr, indices)
         cbar_min = min(cbar_min, min(depr_fc.flatten()))
         cbar_max = max(cbar_max, max(depr_fc.flatten()))
@@ -1410,12 +1510,13 @@ class FunctionalConnectivity:
         t_statistics = np.zeros((np.shape(c)[1], 1))
         p_values = np.zeros((np.shape(c)[1], 1))
         for i in range(np.shape(c)[1]):
-            t_statistics[i], p_values[i] = ttest_ind(c[:, i], d[:, i])
-            # t_statistics[i], p_values[i] = mannwhitneyu(c[:, i], d[:, i])
+            if ttest:
+                t_statistics[i], p_values[i] = ttest_ind(c[:, i], d[:, i])
+            else:
+                t_statistics[i], p_values[i] = mannwhitneyu(c[:, i], d[:, i])
 
         p = p_values.reshape(np.shape(network_ctrl)[1:])
-        # _, p = ttest_ind(network_ctrl, network_depr)
-        # diff = depr_fc - ctrl_fc
+
         diff= abs(depr_fc) - abs(ctrl_fc)
 
         if bonferroni:
@@ -1552,10 +1653,14 @@ class FunctionalConnectivity:
         return depr_R, depr_L
     
     def plot_significant_hand_diff(
-        self, control_R, control_L, condition, colorbar=True, save_as=None, bonferroni=False
+        self, control_R, control_L, condition, colorbar=True, save_as=None, bonferroni=False, median=0, ttest=1
     ):
-        a = np.mean(control_R,axis=0)
-        b = np.mean(control_L,axis=0)
+        if median==0:
+            a = np.nanmean(control_R,axis=0)
+            b = np.nanmean(control_L,axis=0)
+        else:
+            a = np.nanmedian(control_R,axis=0)
+            b = np.nanmedian(control_L,axis=0)
 
         control_R = np.reshape(
             control_R, (len(control_R), self.n_roi * self.n_roi)
@@ -1572,10 +1677,12 @@ class FunctionalConnectivity:
         p_values = np.zeros((np.shape(control_R)[1], 1))
 
         for i in range(np.shape(control_R)[1]):
-            t_statistics[i], p_values[i] = ttest_ind(
-                control_R[:, i], control_L[:, i]
-            )
-            # t_statistics[i], p_values[i] = mannwhitneyu(c[:, i], d[:, i])
+            if ttest:
+                t_statistics[i], p_values[i] = ttest_ind(
+                    control_R[:, i], control_L[:, i]
+                )
+            else:
+                t_statistics[i], p_values[i] = mannwhitneyu(control_R[:, i], control_L[:, i])
 
         p = p_values.reshape((self.n_roi * self.n_roi))
 
@@ -1645,7 +1752,7 @@ class FunctionalConnectivity:
         return stat_diff
     
 
-    def plot_network_heatmap_hand(self, control_M, depr_M, network_name, hand, save_as=None, bonferroni=False, scaling=0):
+    def plot_network_heatmap_hand(self, control_M, depr_M, network_name, hand, save_as=None, bonferroni=False, median=0, ttest=1):
             """plot binary matrix of significant connections for a specific subnetwork"""
             plt.figure(figsize=(15, 5))
 
@@ -1665,14 +1772,22 @@ class FunctionalConnectivity:
 
             # Get control values
             # avg_ctrl = self.get_mean_ddc("control")
-            avg_ctrl = np.mean(self.control_weights, axis=0)
+            if median==0:
+                avg_ctrl = np.nanmean(self.control_weights, axis=0)
+            else:
+                avg_ctrl = np.nanmedian(self.control_weights, axis=0)
+
             ctrl_fc = self.subset_fc(avg_ctrl, indices)
             cbar_min = min(ctrl_fc.flatten())
             cbar_max = max(ctrl_fc.flatten())
 
             # Get depressed values
             # avg_depr = self.get_mean_ddc("depressed")
-            avg_depr = np.mean(self.depress_weights, axis=0)
+            if median==0:
+                avg_depr = np.nanmean(self.depress_weights, axis=0)
+            else:
+                avg_depr = np.nanmedian(self.depress_weights, axis=0)
+
             depr_fc = self.subset_fc(avg_depr, indices)
             cbar_min = min(cbar_min, min(depr_fc.flatten()))
             cbar_max = max(cbar_max, max(depr_fc.flatten()))
@@ -1715,12 +1830,13 @@ class FunctionalConnectivity:
             t_statistics = np.zeros((np.shape(c)[1], 1))
             p_values = np.zeros((np.shape(c)[1], 1))
             for i in range(np.shape(c)[1]):
-                t_statistics[i], p_values[i] = ttest_ind(c[:, i], d[:, i])
-                # t_statistics[i], p_values[i] = mannwhitneyu(c[:, i], d[:, i])
+                if ttest:
+                    t_statistics[i], p_values[i] = ttest_ind(c[:, i], d[:, i])
+                else:
+                    t_statistics[i], p_values[i] = mannwhitneyu(c[:, i], d[:, i])
 
             p = p_values.reshape(np.shape(network_ctrl)[1:])
-            # _, p = ttest_ind(network_ctrl, network_depr)
-            # diff = depr_fc - ctrl_fc
+
             diff= abs(depr_fc) - abs(ctrl_fc)
 
             if bonferroni:
@@ -1784,7 +1900,7 @@ class FunctionalConnectivity:
                     )
             # return diff
                     
-    def plot_significant_hand_diff_distribution(self, stat_diff, control_R, control_L):
+    def plot_significant_hand_diff_distribution(self, stat_diff, control_R, control_L, ttest=1):
 
         a = np.where(stat_diff == 1)
         
@@ -1812,7 +1928,11 @@ class FunctionalConnectivity:
             ax.legend() 
 
             # Perform t-test
-            t_stat, p_value = ttest_ind(control_R[:, x, y], control_L[:, x, y])
+            if ttest:
+                t_stat, p_value = ttest_ind(control_R[:, x, y], control_L[:, x, y])
+            else:
+                t_stat, p_value = mannwhitneyu(control_R[:, x, y], control_L[:, x, y])
+
             ax.annotate(f'p-value: {p_value:.4f}', xy=(0.5, 0.5), xycoords='axes fraction', ha='center', va='center',
                         bbox=dict(boxstyle='round', facecolor='white', alpha=0.7))
 
@@ -1822,11 +1942,14 @@ class FunctionalConnectivity:
         return a
     
 
-    def plot_network_connectivity_graph_hand(self, control_R, state, hand):
+    def plot_network_connectivity_graph_hand(self, control_R, state, hand, median=0):
         """plot network graph on brain template of connections for left or right handed"""
 
         coord_list = np.asarray(self.positions[["x", "y", "z"]])
-        R = np.nanmean(control_R, axis=0)
+        if median==0:
+            R = np.nanmean(control_R, axis=0)
+        else:
+            R = np.nanmedian(control_R, axis=0)
         if hand=='R':
             color='green'
         else:
@@ -1853,9 +1976,14 @@ class FunctionalConnectivity:
         )
 
 
-    def plot_means_std_matrice_hand(self, control_R, control_L, state, save_as=None, cmap="Reds"):
-        R = np.nanmean(control_R, axis=0)
-        L = np.nanmean(control_L, axis=0)
+    def plot_means_std_matrice_hand(self, control_R, control_L, state, save_as=None, cmap="Reds", median=0):
+
+        if median==0:
+            R = np.nanmean(control_R, axis=0)
+            L = np.nanmean(control_L, axis=0)
+        else:
+            R = np.nanmedian(control_R, axis=0)
+            L = np.nanmedian(control_L, axis=0)
 
         R_std=np.nanstd(control_R, axis=0)
         L_std=np.nanstd(control_L, axis=0)
@@ -1945,3 +2073,97 @@ class FunctionalConnectivity:
             node_color="k",
         )
         return view
+    
+    def find_outliers_group(self, thr=5):
+        from scipy.stats import zscore
+        # Assuming your population is stored in a list named 'population'
+        # 'population' should contain 1000 20x20 matrices
+
+        # Flatten each matrix into a 1D array
+        flattened_population = [individual.flatten() for individual in self.control_weights]
+
+        # Convert the list of flattened arrays into a 2D NumPy array
+        data = np.array(flattened_population)
+
+        # Calculate z-scores for each element in the array
+        z_scores = zscore(data, axis=None)
+
+        # Define a threshold for outliers (e.g., 3 standard deviations)
+        threshold = thr
+
+        # Find indices of outliers
+        outlier_indices_C = np.where(np.abs(z_scores) > threshold)
+
+        # Print the indices of outliers
+        print("Indices of outliers control:", np.unique(outlier_indices_C[0]))
+        
+        # Flatten each matrix into a 1D array
+        flattened_population = [individual.flatten() for individual in self.depress_weights]
+
+        # Convert the list of flattened arrays into a 2D NumPy array
+        data = np.array(flattened_population)
+
+        # Calculate z-scores for each element in the array
+        z_scores = zscore(data, axis=None)
+
+        # Define a threshold for outliers (e.g., 3 standard deviations)
+        threshold = thr
+
+        # Find indices of outliers
+        outlier_indices_D = np.where(np.abs(z_scores) > threshold)
+
+        # Print the indices of outliers
+        print("Indices of outliers depressed:", np.unique(outlier_indices_D[0]))
+        
+        return outlier_indices_C, outlier_indices_D
+        
+    def dendrogram_DDC_matrices(self, thr=100, n=50):
+        print(np.shape(self.control_weights)[0])
+        random_numbers = np.random.randint(0, np.shape(self.control_weights)[0], size=n)
+        C=np.reshape(self.control_weights, (np.shape(self.control_weights)[0], self.n_roi*self.n_roi))[random_numbers,:]
+        random_numbers = np.random.randint(0, np.shape(self.depress_weights)[0], size=n)
+        D=np.reshape(self.depress_weights, (np.shape(self.depress_weights)[0], self.n_roi*self.n_roi))[random_numbers,:]
+        x=np.vstack([C, D])
+        
+        
+        import scipy.cluster.hierarchy as shc
+        dendrogram = shc.linkage(x, method='ward',optimal_ordering=True)
+        ordered_indices = shc.leaves_list(dendrogram)
+
+        # corr_matrix_reordered = corr_vec[ordered_indices, :]
+        # corr_matrix_reordered = corr_matrix_reordered[:, ordered_indices]
+        # Plot the dendrogram
+        from matplotlib.gridspec import GridSpec
+
+        fig = plt.figure(figsize=(9, 5), constrained_layout=True)
+        plt.title("Dendrogram")
+        # # plt.subplot(311)
+        R=shc.dendrogram(dendrogram,color_threshold=thr)
+        
+        return C, D, x, R, ordered_indices
+        
+    def check_stats(self):
+        from scipy.stats import ttest_ind
+        from scipy.stats import mannwhitneyu
+        from scipy.stats import shapiro
+        
+        t_statistics = np.zeros((np.shape(self.control)[1], 1))
+        p_values_t = np.zeros((np.shape(self.control)[1], 1))
+        p_values_t_log = np.zeros((np.shape(self.control)[1], 1))
+        p_values_mw = np.zeros((np.shape(self.control)[1], 1))
+        p_value_norm_c = np.zeros((np.shape(self.control)[1], 1))
+        p_value_norm_d = np.zeros((np.shape(self.control)[1], 1))
+
+        for i in range(np.shape(self.control)[1]):
+            t_statistics[i], p_values_t[i] = ttest_ind(
+                self.control[:, i], self.depress[:, i]
+            )
+            t_statistics[i], p_values_t_log[i] = ttest_ind(
+                np.log(np.abs(self.control[:, i])), np.log(np.abs(self.depress[:, i]))
+            )
+            t_statistics[i], p_values_mw[i] = mannwhitneyu(self.control[:, i], self.depress[:, i])
+            stat, p_value_norm_c[i] = shapiro(self.control[:, i])
+            stat, p_value_norm_d[i] = shapiro(self.depress[:, i])
+            
+        return p_values_t, p_values_t_log, p_values_mw, p_value_norm_c,p_value_norm_d, self.control, self.depress
+        
