@@ -1269,6 +1269,7 @@ class FunctionalConnectivity:
             a = np.nanmedian(control_M,axis=0)
             b = np.nanmedian(control_F,axis=0)
 
+        self.n_roi=np.shape(control_M)[1]
         control_M = np.reshape(
             control_M, (len(control_M), self.n_roi * self.n_roi)
         )
@@ -1359,37 +1360,38 @@ class FunctionalConnectivity:
 
         plt.savefig(f"{self.fig_dir}{save_as}")
 
-        return stat_diff
+        return stat_diff, diff
     
-    def plot_significant_sex_diff_distribution(self, stat_diff, control_M, control_F, ttest=1):
+    # def plot_significant_sex_diff_distribution(self, stat_diff, control_M, control_F, ttest=1):
 
-        a=np.where(stat_diff==1)
-        for i in range(np.shape(a)[1]):
+    #     a=np.where(stat_diff==1)
+    #     for i in range(np.shape(a)[1]):
 
-            x = a[0][i]
-            y = a[1][i]
+    #         x = a[0][i]
+    #         y = a[1][i]
             
-            # Create histograms
-            plt.figure(figsize=(12, 6))
+    #         # Create histograms
+    #         plt.figure(figsize=(12, 6))
 
-            sns.histplot(control_M[:, x, y], kde=True, color='cyan', label='Males',log_scale=(True, False))
-            sns.histplot(control_F[:, x, y], kde=True, color='magenta', label='Females',log_scale=(True, False))
-            plt.title(f"{self.all_ROIs[x]}:{self.all_ROIs[y]}")
-            plt.legend() 
-            # Perform t-test
-            if ttest:
-                _ , p_value = ttest_ind(control_M[:, x, y], control_F[:, x, y])
-            else:
-                _ , p_value = mannwhitneyu(control_M[:, x, y], control_F[:, x, y])
+    #         sns.histplot(control_M[:, x, y], kde=True, color='cyan', label='Males',log_scale=(True, False))
+    #         sns.histplot(control_F[:, x, y], kde=True, color='magenta', label='Females',log_scale=(True, False))
+    #         plt.title(f"{self.all_ROIs[x]}:{self.all_ROIs[y]}")
+    #         plt.legend() 
+    #         # Perform t-test
+    #         if ttest:
+    #             _ , p_value = ttest_ind(control_M[:, x, y], control_F[:, x, y])
+    #         else:
+    #             _ , p_value = mannwhitneyu(control_M[:, x, y], control_F[:, x, y])
 
-            plt.annotate(f'p-value: {p_value:.4f}', xy=(0.5, 0.5), xycoords='axes fraction', ha='center', va='center',
-                bbox=dict(boxstyle='round', facecolor='white', alpha=0.7))
+    #         plt.annotate(f'p-value: {p_value:.4f}', xy=(0.5, 0.5), xycoords='axes fraction', ha='center', va='center',
+    #             bbox=dict(boxstyle='round', facecolor='white', alpha=0.7))
 
 
-        return a
+    #     return a
     
-   
-    def plot_significant_sex_diff_distribution(self, stat_diff, control_M, control_F, ttest=1):
+
+
+    def plot_significant_sex_diff_distribution(self, stat_diff, control_M, control_F, ttest=1, log=1):
 
         a = np.where(stat_diff == 1)
         
@@ -1399,9 +1401,12 @@ class FunctionalConnectivity:
         # Filter significant differences based on valid ROIs
         valid_diff_indices = [(x, y) for x, y in zip(a[0], a[1]) if self.all_ROIs[x] in valid_rois and self.all_ROIs[y] in valid_rois]
         
-        # Calculate the number of subplots based on the number of valid significant differences
+        # If length of valid_diff_indices exceeds 100, randomly select 100 values
+        if len(valid_diff_indices) > 100:
+            valid_diff_indices = random.sample(valid_diff_indices, 50)
+
         num_plots = len(valid_diff_indices)
-        num_cols = 4  # You can adjust the number of columns in the grid
+        num_cols = 5  # You can adjust the number of columns in the grid
         num_rows = (num_plots + num_cols - 1) // num_cols
 
         # Create a grid of subplots
@@ -1411,8 +1416,12 @@ class FunctionalConnectivity:
             ax = axes.flatten()[i]
 
             # Create histograms
-            sns.histplot(control_M[:, x, y], kde=True, color='cyan', label='Males', log_scale=(True, False), ax=ax)
-            sns.histplot(control_F[:, x, y], kde=True, color='magenta', label='Females', log_scale=(True, False), ax=ax)
+            if log:
+                sns.histplot(control_M[:, x, y], kde=True, color='cyan', label='Males', log_scale=(True, False), ax=ax)
+                sns.histplot(control_F[:, x, y], kde=True, color='magenta', label='Females', log_scale=(True, False), ax=ax)
+            else:
+                sns.histplot(control_M[:, x, y], kde=True, color='cyan', label='Males', log_scale=(False, False), ax=ax)
+                sns.histplot(control_F[:, x, y], kde=True, color='magenta', label='Females', log_scale=(False, False), ax=ax)
             ax.set_title(f"{self.all_ROIs[x]}:{self.all_ROIs[y]}")
             ax.legend() 
 
@@ -1429,6 +1438,8 @@ class FunctionalConnectivity:
         plt.tight_layout()
 
         return a
+
+   
 
 
 
@@ -1661,7 +1672,7 @@ class FunctionalConnectivity:
         else:
             a = np.nanmedian(control_R,axis=0)
             b = np.nanmedian(control_L,axis=0)
-
+        self.n_roi=np.shape(control_R)[1]
         control_R = np.reshape(
             control_R, (len(control_R), self.n_roi * self.n_roi)
         )
@@ -1749,7 +1760,7 @@ class FunctionalConnectivity:
 
         plt.savefig(f"{self.fig_dir}{save_as}")
 
-        return stat_diff
+        return stat_diff, diff
     
 
     def plot_network_heatmap_hand(self, control_M, depr_M, network_name, hand, save_as=None, bonferroni=False, median=0, ttest=1):
@@ -2076,8 +2087,6 @@ class FunctionalConnectivity:
     
     def find_outliers_group(self, thr=5):
         from scipy.stats import zscore
-        # Assuming your population is stored in a list named 'population'
-        # 'population' should contain 1000 20x20 matrices
 
         # Flatten each matrix into a 1D array
         flattened_population = [individual.flatten() for individual in self.control_weights]
@@ -2167,3 +2176,57 @@ class FunctionalConnectivity:
             
         return p_values_t, p_values_t_log, p_values_mw, p_value_norm_c,p_value_norm_d, self.control, self.depress
         
+
+        ################## PCA ##############
+    
+    # import numpy as np
+# from mpl_toolkits.mplot3d import Axes3D
+# from sklearn.decomposition import PCA
+
+# # Assume 'matrices' is your group of matrices with shape (3780, 86, 86)
+# # Reshape each matrix to (3780, 7396)
+# matrices_flattened = filtered_matrix.reshape((3780, -1))
+
+# # Perform PCA to extract the principal components
+# pca = PCA(n_components=3)  # We want to extract 3 principal components
+# principal_components = pca.fit_transform(matrices_flattened)
+# # Calculate the centroid of the principal components
+# centroid = np.mean(principal_components, axis=0)
+
+# # Calculate distances of each point from the centroid using Euclidean distance
+# distances = np.linalg.norm(principal_components - centroid, axis=1)
+
+# # Define a threshold for outlier detection
+# if DDC:
+#     threshold = 1e6 # You can adjust this threshold based on your data and requirements
+# else:
+#     threshold = 15
+# # Identify outliers based on the threshold
+# outliers_indices = np.where(distances > threshold)[0]
+
+# # Create a 3D scatterplot of the principal components with outliers marked in red
+# fig = plt.figure(figsize=(10, 8))
+# ax = fig.add_subplot(111, projection='3d')
+
+# # Extract individual principal components
+# pc1 = principal_components[:, 0]
+# pc2 = principal_components[:, 1]
+# pc3 = principal_components[:, 2]
+
+# # Plot the scatterplot with outliers marked in red
+# ax.scatter(pc1, pc2, pc3, c='b', marker='o', alpha=0.5, label='Data Points')
+
+# # Plot outliers in red
+# outlier_pc1 = principal_components[outliers_indices, 0]
+# outlier_pc2 = principal_components[outliers_indices, 1]
+# outlier_pc3 = principal_components[outliers_indices, 2]
+# ax.scatter(outlier_pc1, outlier_pc2, outlier_pc3, c='r', marker='o', alpha=0.5, label='Outliers')
+
+# ax.set_xlabel('PC1')
+# ax.set_ylabel('PC2')
+# ax.set_zlabel('PC3')
+# ax.set_title('3D Scatterplot of Principal Components with Outliers')
+# ax.legend()
+
+# plt.show()
+# print('N outliers',len(outliers_indices) )
