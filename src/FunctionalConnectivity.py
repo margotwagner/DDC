@@ -186,7 +186,8 @@ class FunctionalConnectivity:
             for f in files:
                 if os.path.exists(f):
                     # Control subjects
-                    if self.labels.values[i] == '0':
+                    if self.labels['depress_dsm5'].iloc[i]==0:
+#                     if self.labels.values[i] == '0':
                         d = np.asarray(pd.read_csv(f, header=None))
                         if not len(d) < self.n_roi:
                             if sum(sum(np.isnan(d))) < 1:
@@ -1191,8 +1192,8 @@ class FunctionalConnectivity:
     
     def get_controls_sex(self, labels):
 
-        labels=labels[1:]
-        labels_c=labels[labels[4]=='0']
+
+        labels_c=labels[labels['depress_dsm5']==0]
         
         control_M=[]
         control_F=[]
@@ -1209,12 +1210,12 @@ class FunctionalConnectivity:
                 if os.path.exists(f):
                     # print(f)
                     # sex
-                    if labels_c.values[i,0] == 'M':
+                    if labels_c['sex'].iloc[i] == 'M':
                         d = np.asarray(pd.read_csv(f, header=None))
                         if not len(d) < 98:
                             if sum(sum(np.isnan(d))) < 1:
                                 control_M.append(d)
-                    elif labels_c.values[i,0] == 'F':
+                    elif labels_c['sex'].iloc[i] == 'F':
                         d = np.asarray(pd.read_csv(f, header=None))
                         if not len(d) < 98:
                             if sum(sum(np.isnan(d))) < 1:
@@ -1226,8 +1227,8 @@ class FunctionalConnectivity:
     
     def get_depr_sex(self, labels):
 
-        labels=labels[1:]
-        labels_c=labels[labels[4]=='1']
+
+        labels_c=labels[labels['depress_dsm5']==1]
         
         control_M=[]
         control_F=[]
@@ -1244,12 +1245,12 @@ class FunctionalConnectivity:
                 if os.path.exists(f):
                     # print(f)
                     # sex
-                    if labels_c.values[i,0] == 'M':
+                    if labels_c['sex'].iloc[i] == 'M':
                         d = np.asarray(pd.read_csv(f, header=None))
                         if not len(d) < 98:
                             if sum(sum(np.isnan(d))) < 1:
                                 control_M.append(d)
-                    elif labels_c.values[i,0] == 'F':
+                    elif labels_c['sex'].iloc[i] == 'F':
                         d = np.asarray(pd.read_csv(f, header=None))
                         if not len(d) < 98:
                             if sum(sum(np.isnan(d))) < 1:
@@ -1361,33 +1362,6 @@ class FunctionalConnectivity:
         plt.savefig(f"{self.fig_dir}{save_as}")
 
         return stat_diff, diff
-    
-    # def plot_significant_sex_diff_distribution(self, stat_diff, control_M, control_F, ttest=1):
-
-    #     a=np.where(stat_diff==1)
-    #     for i in range(np.shape(a)[1]):
-
-    #         x = a[0][i]
-    #         y = a[1][i]
-            
-    #         # Create histograms
-    #         plt.figure(figsize=(12, 6))
-
-    #         sns.histplot(control_M[:, x, y], kde=True, color='cyan', label='Males',log_scale=(True, False))
-    #         sns.histplot(control_F[:, x, y], kde=True, color='magenta', label='Females',log_scale=(True, False))
-    #         plt.title(f"{self.all_ROIs[x]}:{self.all_ROIs[y]}")
-    #         plt.legend() 
-    #         # Perform t-test
-    #         if ttest:
-    #             _ , p_value = ttest_ind(control_M[:, x, y], control_F[:, x, y])
-    #         else:
-    #             _ , p_value = mannwhitneyu(control_M[:, x, y], control_F[:, x, y])
-
-    #         plt.annotate(f'p-value: {p_value:.4f}', xy=(0.5, 0.5), xycoords='axes fraction', ha='center', va='center',
-    #             bbox=dict(boxstyle='round', facecolor='white', alpha=0.7))
-
-
-    #     return a
     
 
 
@@ -1595,8 +1569,7 @@ class FunctionalConnectivity:
    
     def get_controls_hand(self, labels):
 
-        labels=labels[1:]
-        labels_c=labels[labels[4]=='0']
+        labels_c=labels[labels['depress_dsm5']==0]
         
         control_R=[]
         control_L=[]
@@ -1613,12 +1586,12 @@ class FunctionalConnectivity:
                 if os.path.exists(f):
                     # print(f)
                     # sex
-                    if labels_c.values[i,2] == 'R':
+                    if labels_c['hand'].iloc[i] == 'R':
                         d = np.asarray(pd.read_csv(f, header=None))
                         if not len(d) < 98:
                             if sum(sum(np.isnan(d))) < 1:
                                 control_R.append(d)
-                    elif labels_c.values[i,2] == 'L':
+                    elif labels_c['hand'].iloc[i] == 'L':
                         d = np.asarray(pd.read_csv(f, header=None))
                         if not len(d) < 98:
                             if sum(sum(np.isnan(d))) < 1:
@@ -1630,11 +1603,10 @@ class FunctionalConnectivity:
     
     def get_depr_hand(self, labels):
 
-        labels=labels[1:]
-        labels_c=labels[labels[4]=='1']
+        labels_c=labels[labels['depress_dsm5']==1]
         
-        control_R=[]
-        control_L=[]
+        depr_R=[]
+        depr_L=[]
 
         for i in range(len(labels_c)):
             # subject ID
@@ -1648,20 +1620,41 @@ class FunctionalConnectivity:
                 if os.path.exists(f):
                     # print(f)
                     # sex
-                    if labels_c.values[i,2] == 'R':
+                    if labels_c['hand'].iloc[i] == 'R':
                         d = np.asarray(pd.read_csv(f, header=None))
                         if not len(d) < 98:
                             if sum(sum(np.isnan(d))) < 1:
-                                control_R.append(d)
-                    elif labels_c.values[i,2] == 'L':
+                                depr_R.append(d)
+                    elif labels_c['hand'].iloc[i] == 'L':
                         d = np.asarray(pd.read_csv(f, header=None))
                         if not len(d) < 98:
                             if sum(sum(np.isnan(d))) < 1:
-                                control_L.append(d)
+                                depr_L.append(d)
 
-        depr_R=np.asarray(control_R)
-        depr_L=np.asarray(control_L)
+        depr_R=np.asarray(depr_R)
+        depr_L=np.asarray(depr_L)
         return depr_R, depr_L
+    
+  #################################################### age ########################################################
+
+    def get_controls_age(self, labels):
+        labels_c = labels[labels['depress_dsm5'] == 0]
+        age = np.unique(labels_c['age'])
+        control_age = [[] for _ in range(len(age))]  # Initialize as list of lists
+
+        for n, a in enumerate(age):
+            subs = labels_c[labels_c['age'] == a].index
+            for s in subs:
+                subj = "sub-" + s
+                files = glob.glob(
+                    self.DDC_path + subj + "/single_sessions/" + self.weights_file_name
+                )
+                for f in files:
+                    d = np.asarray(pd.read_csv(f, header=None))
+                    control_age[n].append(d)
+
+        return control_age, age
+
     
     def plot_significant_hand_diff(
         self, control_R, control_L, condition, colorbar=True, save_as=None, bonferroni=False, median=0, ttest=1
