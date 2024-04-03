@@ -1638,9 +1638,13 @@ class FunctionalConnectivity:
   #################################################### age ########################################################
 
     def get_controls_age(self, labels):
+
         labels_c = labels[labels['depress_dsm5'] == 0]
         age = np.unique(labels_c['age'])
+
         control_age = [[] for _ in range(len(age))]  # Initialize as list of lists
+        rows_to_remove = [0,1,2,3,9, 10, 14,17,18,19,20]
+        columns_to_remove = [0,1,2,3,9, 10, 14,17,18,19,20]
 
         for n, a in enumerate(age):
             subs = labels_c[labels_c['age'] == a].index
@@ -1651,6 +1655,10 @@ class FunctionalConnectivity:
                 )
                 for f in files:
                     d = np.asarray(pd.read_csv(f, header=None))
+
+                    d = np.delete(d, rows_to_remove, axis=0)
+                    d = np.delete(d, columns_to_remove, axis=1)
+
                     control_age[n].append(d)
 
         return control_age, age
